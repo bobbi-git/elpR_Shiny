@@ -11,7 +11,7 @@ The goal of the elpR2 package is to provide a user interface containing
 tools for processing and analyzing elephant rumble detector output. The
 user interface appears like so:
 
-<br> <img src="inst/readme_app.png" width="600"/>
+<br> <img src="elpR2/inst/readme_app.png" width="600"/>
 
 ## First Time Installation
 
@@ -50,7 +50,7 @@ devtools::load_all()
 elpRApp()
 ```
 
-<br> <img src="inst/readme_instructions.png" width="1000"/>
+<br> <img src="elpR2/inst/readme_instructions.png" width="1000"/>
 
 ## Usage
 
