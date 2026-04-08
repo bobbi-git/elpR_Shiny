@@ -17,7 +17,7 @@ user interface appears like so:
 
 You can install the development version of elpR2 like so:
 
-1)  In GitHib: Code \>\> Download ZIP
+1)  Download ZIP from GitHub and extract all contents
 
 2)  Navigate to /elpR2/elpR2.Rproj and open with RStudio
 
@@ -62,6 +62,7 @@ otherwise.
 ## Available Functions
 
 ``` r
+elpRApp()
 sound_check_function()
 exclude_sounds_function()
 restructure_rumble_function()
