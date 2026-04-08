@@ -11,13 +11,13 @@ The goal of the elpR2 package is to provide a user interface containing
 tools for processing and analyzing elephant rumble detector output. The
 user interface appears like so:
 
-<br> <img src="elpR2/inst/readme_app.png" width="600"/>
+<br> <img src="inst/readme_app.png" width="600"/>
 
 ## First Time Installation
 
 You can install the development version of elpR2 like so:
 
-1)  In GitHib: Code \>\> Download ZIP
+1)  Download ZIP from GitHub and extract all contents
 
 2)  Navigate to /elpR2/elpR2.Rproj and open with RStudio
 
@@ -50,7 +50,7 @@ devtools::load_all()
 elpRApp()
 ```
 
-<br> <img src="elpR2/inst/readme_instructions.png" width="1000"/>
+<br> <img src="inst/readme_instructions.png" width="1000"/>
 
 ## Usage
 
@@ -62,6 +62,7 @@ otherwise.
 ## Available Functions
 
 ``` r
+elpRApp()
 sound_check_function()
 exclude_sounds_function()
 restructure_rumble_function()
