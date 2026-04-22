@@ -40,4 +40,5 @@ Imports:
     leaflet,
     mapview,
     webshot,
-    DT
+    DT,
+    webshot2

@@ -43,9 +43,6 @@ This function will:
 \note{
 The function expects selection table files in tab-delimited format
 }
-\seealso{
-\code{\link{selection_datetime}} for datetime calculations
-}
 \author{
 Bobbi J. Estabrook \href{mailto:bobbi.estabrook@cornell.edu}{bobbi.estabrook@cornell.edu}
 }

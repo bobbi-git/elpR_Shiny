@@ -49,8 +49,6 @@
 #' @export
 #' @importFrom dplyr bind_rows distinct select everything
 #'
-#' @seealso \code{\link{selection_datetime}} for datetime calculations
-#'
 #' @note The function expects selection table files in tab-delimited format
 
 restructure_general_function <- function(

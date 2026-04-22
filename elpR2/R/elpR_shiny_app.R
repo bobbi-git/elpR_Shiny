@@ -1,7 +1,7 @@
 #Purpose of script: To make a shiny app for the elpR package.
 #Author: Jidapa Janpathompong
 #Date created: April 2025
-#Date last updated: March 25, 2026
+#Date last updated: April 22, 2026
 
 #Notes: This script is organized by sections in the UI:
 #ABOUT
@@ -44,7 +44,9 @@ elpRApp <- function(){
   if(webshot::is_phantomjs_installed() == FALSE){
     webshot::install_phantomjs()
   } #related to downloading leaflet maps
+  library(webshot2) #downloading help documentation
   library(DT) #datatable()
+  library(stringr) #str_c()
 
   #define helper function to add info icons next to input widgets
   add_info <- function(input_widget, arg_name){
@@ -88,12 +90,17 @@ elpRApp <- function(){
       .image {
       position: absolute;
       top: 10px;
+      right: 235px;
+      }
+      .image_yang {
+      position: absolute;
+      top: 15px;
       right: 20px;
       }
       #eng_button {
       position: absolute;
-      top: 38px;
-      right: 230px;
+      top: 15px;
+      right: 445px;
       padding: 10px;
       padding-left: 15px;
       padding-right: 15px;
@@ -101,8 +108,8 @@ elpRApp <- function(){
       }
       #french_button {
       position: absolute;
-      top: 38px;
-      right: 150px;
+      top: 15px;
+      right: 365px;
       padding: 10px;
       border-radius: 0%;
       }
@@ -136,6 +143,7 @@ elpRApp <- function(){
     div(uiOutput("eng_ui")),
     div(uiOutput("french_ui")),
     div(class = "image", imageOutput("logo")),
+    div(class = "image_yang", imageOutput("logo_yang")),
     div(uiOutput("subtitle")),
     div(class = "line", hr()),
 
@@ -517,12 +525,13 @@ elpRApp <- function(){
             uiOutput("help_plots"),
             uiOutput("help_maps")
           ),
+          uiOutput("download_all_help"),
 
           "\n",
           "\n",
           "\n",
 
-          col_widths = breakpoints(sm = c(12,12), md = c(10,12), lg = c(10,12))
+          col_widths = breakpoints(sm = c(12,12,12), md = c(10,10,12), lg = c(10,10,12))
         )
       )
     )
@@ -534,12 +543,19 @@ elpRApp <- function(){
   server <- function(input, output) {
     #______________________________________
     ##### header #####
-    #render logo
+    #render logos
     output$logo <- renderImage({
       list(src = "inst/elp_logo.png",
            contentType = "image/png",
            width = 100,
            height = 80)
+    }, deleteFile = FALSE)
+
+    output$logo_yang <- renderImage({
+      list(src = "inst/yang_logo.png",
+           contentType = "image/png",
+           width = 215,
+           height = 70)
     }, deleteFile = FALSE)
 
     #initialize/set variables for translation buttons
@@ -683,6 +699,7 @@ elpRApp <- function(){
     output$help_data <- renderUI({help_data_eng()})
     output$help_plots <- renderUI({help_plots_eng()})
     output$help_maps <- renderUI({help_maps_eng()})
+    output$download_all_help <- renderUI({downloadButton("download_all_help_eng", label = renderText({card_2_6_1_save_eng}))})
 
     translate_val <- reactiveVal(0)
     unclicked_color <- "background-color: white; color: #404040"
@@ -835,6 +852,7 @@ elpRApp <- function(){
       output$help_data <- renderUI({help_data_eng()})
       output$help_plots <- renderUI({help_plots_eng()})
       output$help_maps <- renderUI({help_maps_eng()})
+      output$download_all_help <- renderUI({downloadButton("download_all_help_eng", label = renderText({card_2_6_1_save_eng}))})
     })
 
     #BUTTON: translate to French
@@ -984,6 +1002,7 @@ elpRApp <- function(){
       output$help_data <- renderUI({help_data_french()})
       output$help_plots <- renderUI({help_plots_french()})
       output$help_maps <- renderUI({help_maps_french()})
+      output$download_all_help <- renderUI({downloadButton("download_all_help_french", label = renderText({card_2_6_1_save_french}))})
     })
 
     #______________________________________
@@ -2507,136 +2526,406 @@ elpRApp <- function(){
     ##### HELP #####
 
     #English & French translations
-    help_sound_eng <- reactive({accordion_panel("What does \"Sound Check\" do?", htmlOutput("sound_check_documentation"), multiple = FALSE)})
-    help_exclude_eng <- reactive({accordion_panel("What does \"Exclude Files\" do?", htmlOutput("exclude_files_documentation"), multiple = FALSE)})
-    help_rumble_eng <- reactive({accordion_panel("What does \"Restructure\" for Rumbles do?", htmlOutput("restructure_documentation"), multiple = FALSE)})
-    help_gunshot_eng <- reactive({accordion_panel("What does \"Restructure\" for Gunshots do?", htmlOutput("gun_restructure_documentation"), multiple = FALSE)})
-    help_general_eng <- reactive({accordion_panel("What does \"Restructure\" for General do?", htmlOutput("general_restructure_documentation"), multiple = FALSE)})
-    help_data_eng <- reactive({accordion_panel("What does \"Data Summaries\" do?", htmlOutput("summary_documentation"), multiple = FALSE)})
-    help_plots_eng <- reactive({accordion_panel("What does \"Results!\" for Plots do?", HTML(
-      "<h2>Plot Results</h2>
-      <h3>Description</h3>
-      <p>This page displays the plots generated by the Data Summaries function.
-      First, select the folder containing your Data Summaries output, and load in the data.
-      Next, use the options on the sidebar to view and download the plots.</p>
-      <h3>Inputs</h3>
-      <ul><li>Folder containing the .rds file generated by the Data Summaries function.</li></ul>
-      <h3>Outputs</h3>
-      <ul><li>Plots in the .rds file generated by the Data Summaries function.
-      (See \"What does \'Data Summaries\' do?\" for more details.)</li></ul>
-      <h3>Author(s)</h3>
-      <p>Jidapa Janpathompong</p>"
-    ), multiple = FALSE)})
-    help_maps_eng <- reactive({accordion_panel("What does \"Results!\" for Maps do?", HTML(
-      "<h2>Map Results</h2>
-      <h3>Description</h3>
-      <p>This page displays maps using data generated by the Data Summaries function.
-      First, select the folder containing your Data Summaries output, and load in the data.
-      Next, use the options on the sidebar to view and download the maps.</p>
-      <h3>Inputs</h3>
-      <ul><li>Folder containing the data tables generated by the Data Summaries function.</li>
-      <li>A .txt file listing sites in data.</li></ul>
-      <h3>Outputs</h3>
-      <ul>
-        <li>Maps using data generated by the Data Summaries function. Specifically uses:
-        <ul>
-          <li>*Rumbles_Site_Weekly_Summaries.txt</li>
-          <li>*Rumbles_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Site.txt</li>
-        </ul></li>
-      </ul>
-      <h3>Author(s)</h3>
-      <p>Jidapa Janpathompong</p>"
-    ), multiple = FALSE)})
+    help_sound_eng <- reactive({accordion_panel(
+      "What does \"Sound Check\" do?",
+      downloadButton("download_sound_check_help", label = NULL),
+      htmlOutput("sound_check_documentation"))})
+    help_exclude_eng <- reactive({accordion_panel(
+      "What does \"Exclude Files\" do?",
+      downloadButton("download_exclude_files_help", label = NULL),
+      htmlOutput("exclude_files_documentation"))})
+    help_rumble_eng <- reactive({accordion_panel(
+      "What does \"Restructure\" for Rumbles do?",
+      downloadButton("download_restructure_help", label = NULL),
+      htmlOutput("restructure_documentation"))})
+    help_gunshot_eng <- reactive({accordion_panel(
+      "What does \"Restructure\" for Gunshots do?",
+      downloadButton("download_gun_restructure_help", label = NULL),
+      htmlOutput("gun_restructure_documentation"))})
+    help_general_eng <- reactive({accordion_panel(
+      "What does \"Restructure\" for General do?",
+      downloadButton("download_general_restructure_help", label = NULL),
+      htmlOutput("general_restructure_documentation"))})
+    help_data_eng <- reactive({accordion_panel(
+      "What does \"Data Summaries\" do?",
+      downloadButton("download_summary_help", label = NULL),
+      htmlOutput("summary_documentation"))})
+    help_plots_eng <- reactive({accordion_panel(
+      "What does \"Results!\" for Plots do?",
+      downloadButton("download_plots_help_eng", label = NULL),
+      htmlOutput("plots_documentation_eng"))})
+    help_maps_eng <- reactive({accordion_panel(
+      "What does \"Results!\" for Maps do?",
+      downloadButton("download_maps_help_eng", label = NULL),
+      htmlOutput("maps_documentation_eng"))})
 
-    help_sound_french <- reactive({accordion_panel("Que fait \"Sound Check\"?", htmlOutput("sound_check_documentation"))})
-    help_exclude_french <- reactive({accordion_panel("Que fait \"Exclude Sounds\"?", htmlOutput("exclude_files_documentation"))})
-    help_rumble_french <- reactive({accordion_panel("Que fait \"Restructure\" pour Rumbles?", htmlOutput("restructure_documentation"))})
-    help_gunshot_french <- reactive({accordion_panel("Que fait \"Restructure\" pour Gunshots?", htmlOutput("gun_restructure_documentation"))})
-    help_general_french <- reactive({accordion_panel("Que fait \"Restructure\" pour General?", htmlOutput("general_restructure_documentation"))})
-    help_data_french <- reactive({accordion_panel("Que fait \"Data Summaries\"?", htmlOutput("summary_documentation"))})
-    help_plots_french <- reactive({accordion_panel("Que fait \"Résultats!\" pour Graphiques?", HTML(
-      "<h2>Résultats du Graphique</h2>
-      <h3>Description</h3>
-      <p>Cette page affiche les graphiques générés par la fonction Data Summaries.
-      Tout d'abord, sélectionnez le dossier contenant les données générées par la fonction Data Summaries, puis chargez-y les données.
-      Ensuite, utilisez les options de la barre latérale pour visualiser et télécharger les graphiques.</p>
-      <h3>Entrées</h3>
-      <ul><li>Dossier contenant le fichier .rds généré par la fonction Data Summaries.</li></ul>
-      <h3>Sorties</h3>
-      <ul><li>Graphiques du fichier .rds généré par la fonction Data Summaries.
-      (Pour plus de détails, consultez la section \"Que fait \'Data Summaries\'?\")</li></ul>
-      <h3>Auteurs</h3>
-
-      <p>Jidapa Janpathompong</p>"
-    ))})
-    help_maps_french <- reactive({accordion_panel("Que fait \"Résultats!\" pour Cartes?", HTML(
-      "<h2>Résultats de la Carte</h2>
-      <h3>Description</h3>
-      <p>Cette page affiche des cartes réalisées à partir des données générées par la fonction Data Summaries.
-      Sélectionnez d'abord le dossier contenant les données générées par la fonction Data Summaries, puis chargez-y les données.
-      Ensuite, utilisez les options de la barre latérale pour visualiser et télécharger les cartes.</p>
-      <h3>Entrées</h3>
-      <ul><li>Dossier contenant les tableaux de données générés par la fonction Data Summaries.</li>
-      <li>Un fichier .txt listant les sites dans les données.</li></ul>
-      <h3>Sorties</h3>
-      <ul>
-        <li>Cartes utilisant les données générées par la fonction Data Summaries. Utilise plus précisément:
-        <ul>
-          <li>*Rumbles_Site_Weekly_Summaries.txt</li>
-          <li>*Rumbles_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Site.txt</li>
-        </ul></li>
-      </ul>
-      <h3>Auteurs</h3>
-      <p>Jidapa Janpathompong</p>"
-    ))})
+    help_sound_french <- reactive({accordion_panel(
+      "Que fait \"Sound Check\"?",
+      downloadButton("download_sound_check_help", label = NULL),
+      htmlOutput("sound_check_documentation"))})
+    help_exclude_french <- reactive({accordion_panel(
+      "Que fait \"Exclude Sounds\"?",
+      downloadButton("download_exclude_files_help", label = NULL),
+      htmlOutput("exclude_files_documentation"))})
+    help_rumble_french <- reactive({accordion_panel(
+      "Que fait \"Restructure\" pour Rumbles?",
+      downloadButton("download_restructure_help", label = NULL),
+      htmlOutput("restructure_documentation"))})
+    help_gunshot_french <- reactive({accordion_panel(
+      "Que fait \"Restructure\" pour Gunshots?",
+      downloadButton("download_gun_restructure_help", label = NULL),
+      htmlOutput("gun_restructure_documentation"))})
+    help_general_french <- reactive({accordion_panel(
+      "Que fait \"Restructure\" pour General?",
+      downloadButton("download_general_restructure_help", label = NULL),
+      htmlOutput("general_restructure_documentation"))})
+    help_data_french <- reactive({accordion_panel(
+      "Que fait \"Data Summaries\"?",
+      downloadButton("download_summary_help", label = NULL),
+      htmlOutput("summary_documentation"))})
+    help_plots_french <- reactive({accordion_panel(
+      "Que fait \"Résultats!\" pour Graphiques?",
+      downloadButton("download_plots_help_french", label = NULL),
+      htmlOutput("plots_documentation_french"))})
+    help_maps_french <- reactive({accordion_panel(
+      "Que fait \"Résultats!\" pour Cartes?",
+      downloadButton("download_maps_help_french", label = NULL),
+      htmlOutput("maps_documentation_french"))})
 
     #sound_check_documentation
-    output$sound_check_documentation <- renderText({
+    sound_check_help <- reactive({
       rd = system.file("man", "sound_check_function.Rd", package = "elpR2")
-      temp = tempfile("docs")
-      Rd2HTML(rd, out = temp)
-      HTML(read_file(temp))
+      temp_html = tempfile(fileext = ".html")
+      Rd2HTML(rd, out = temp_html)
+      list(
+        html_path = temp_html,
+        html_content = HTML(read_file(temp_html))
+      )
+    })
+    output$download_sound_check_help <- downloadHandler(
+      filename = function(){
+        "sound_check_help.pdf"
+      },
+      content = function(file){
+        webshot2::webshot(url = sound_check_help()$html_path, file = file)
+      }
+    )
+    output$sound_check_documentation <- renderText({
+      sound_check_help()$html_content
     })
 
     #exclude_files_documentation
-    output$exclude_files_documentation <- renderText({
+    exclude_files_help <- reactive({
       rd = system.file("man", "sound_exclude_function.Rd", package = "elpR2")
-      temp = tempfile("docs")
-      Rd2HTML(rd, out = temp)
-      HTML(read_file(temp))
+      temp_html = tempfile(fileext = ".html")
+      Rd2HTML(rd, out = temp_html)
+      list(
+        html_path = temp_html,
+        html_content = HTML(read_file(temp_html))
+      )
+    })
+    output$download_exclude_files_help <- downloadHandler(
+      filename = function(){
+        "exclude_files_help.pdf"
+      },
+      content = function(file){
+        webshot2::webshot(url = exclude_files_help()$html_path, file = file)
+      }
+    )
+    output$exclude_files_documentation <- renderText({
+      exclude_files_help()$html_content
     })
 
     #restructure_documentation
-    output$restructure_documentation <- renderText({
+    restructure_help <- reactive({
       rd = system.file("man", "restructure_rumble_function.Rd", package = "elpR2")
-      temp = tempfile("docs")
-      Rd2HTML(rd, out = temp)
-      HTML(read_file(temp))
+      temp_html = tempfile(fileext = ".html")
+      Rd2HTML(rd, out = temp_html)
+      list(
+        html_path = temp_html,
+        html_content = HTML(read_file(temp_html))
+      )
+    })
+    output$download_restructure_help <- downloadHandler(
+      filename = function(){
+        "rumble_restructure_help.pdf"
+      },
+      content = function(file){
+        webshot2::webshot(url = restructure_help()$html_path, file = file)
+      }
+    )
+    output$restructure_documentation <- renderText({
+      restructure_help()$html_content
     })
 
     #gun_restructure_documentation
-    output$gun_restructure_documentation <- renderText({
+    gun_restructure_help <- reactive({
       rd = system.file("man", "restructure_gunshot_function.Rd", package = "elpR2")
-      temp = tempfile("docs")
-      Rd2HTML(rd, out = temp)
-      HTML(read_file(temp))
+      temp_html = tempfile(fileext = ".html")
+      Rd2HTML(rd, out = temp_html)
+      list(
+        html_path = temp_html,
+        html_content = HTML(read_file(temp_html))
+      )
+    })
+    output$download_gun_restructure_help <- downloadHandler(
+      filename = function(){
+        "gunshot_restructure_help.pdf"
+      },
+      content = function(file){
+        webshot2::webshot(url = gun_restructure_help()$html_path, file = file)
+      }
+    )
+    output$gun_restructure_documentation <- renderText({
+      gun_restructure_help()$html_content
     })
 
     #general_restructure_documentation
-    output$general_restructure_documentation <- renderText({
+    general_restructure_help <- reactive({
       rd = system.file("man", "restructure_general_function.Rd", package = "elpR2")
-      temp = tempfile("docs")
-      Rd2HTML(rd, out = temp)
-      HTML(read_file(temp))
+      temp_html = tempfile(fileext = ".html")
+      Rd2HTML(rd, out = temp_html)
+      list(
+        html_path = temp_html,
+        html_content = HTML(read_file(temp_html))
+      )
+    })
+    output$download_general_restructure_help <- downloadHandler(
+      filename = function(){
+        "general_restructure_help.pdf"
+      },
+      content = function(file){
+        webshot2::webshot(url = general_restructure_help()$html_path, file = file)
+      }
+    )
+    output$general_restructure_documentation <- renderText({
+      general_restructure_help()$html_content
     })
 
     #summary_documentation
-    output$summary_documentation <- renderText({
+    summary_help <- reactive({
       rd = system.file("man", "data_summaries_function.Rd", package = "elpR2")
-      temp = tempfile("docs")
-      Rd2HTML(rd, out = temp)
-      HTML(read_file(temp))
+      temp_html = tempfile(fileext = ".html")
+      Rd2HTML(rd, out = temp_html)
+      list(
+        html_path = temp_html,
+        html_content = HTML(read_file(temp_html))
+      )
     })
+    output$download_summary_help <- downloadHandler(
+      filename = function(){
+        "data_summaries_help.pdf"
+      },
+      content = function(file){
+        webshot2::webshot(url = summary_help()$html_path, file = file)
+      }
+    )
+    output$summary_documentation <- renderText({
+      summary_help()$html_content
+    })
+
+    #plots_documentation
+    plots_help <- reactive({
+      temp_html_eng = tempfile(fileext = ".html")
+      temp_html_french = tempfile(fileext = ".html")
+      html_content_eng = HTML(
+        "<h2>Plot Results</h2>
+        <h3>Description</h3>
+        <p>This page displays the plots generated by the Data Summaries function.
+        First, select the folder containing your Data Summaries output, and load in the data.
+        Next, use the options on the sidebar to view and download the plots.</p>
+        <h3>Inputs</h3>
+        <ul><li>Folder containing the .rds file generated by the Data Summaries function.</li></ul>
+        <h3>Outputs</h3>
+        <ul><li>Plots in the .rds file generated by the Data Summaries function.
+        (See \"What does \'Data Summaries\' do?\" for more details.)</li></ul>
+        <h3>Author(s)</h3>
+        <p>Jidapa Janpathompong</p>")
+      html_content_french = HTML(
+        "<h2>Résultats du Graphique</h2>
+        <h3>Description</h3>
+        <p>Cette page affiche les graphiques générés par la fonction Data Summaries.
+        Tout d'abord, sélectionnez le dossier contenant les données générées par la fonction Data Summaries, puis chargez-y les données.
+        Ensuite, utilisez les options de la barre latérale pour visualiser et télécharger les graphiques.</p>
+        <h3>Entrées</h3>
+        <ul><li>Dossier contenant le fichier .rds généré par la fonction Data Summaries.</li></ul>
+        <h3>Sorties</h3>
+        <ul><li>Graphiques du fichier .rds généré par la fonction Data Summaries.
+        (Pour plus de détails, consultez la section \"Que fait \'Data Summaries\'?\")</li></ul>
+        <h3>Auteurs</h3>
+
+        <p>Jidapa Janpathompong</p>")
+      cat(html_content_eng, file = temp_html_eng)
+      cat(html_content_french, file = temp_html_french)
+      list(
+        html_path_eng = temp_html_eng,
+        html_path_french = temp_html_french,
+        html_content_eng = html_content_eng,
+        html_content_french = html_content_french
+      )
+    })
+    output$download_plots_help_eng <- downloadHandler(
+      filename = function(){
+        "plots_help.pdf"
+      },
+      content = function(file){
+        webshot2::webshot(url = plots_help()$html_path_eng, file = file)
+      }
+    )
+    output$download_plots_help_french <- downloadHandler(
+      filename = function(){
+        "plots_help.pdf"
+      },
+      content = function(file){
+        webshot2::webshot(url = plots_help()$html_path_french, file = file)
+      }
+    )
+    output$plots_documentation_eng <- renderText({
+      plots_help()$html_content_eng
+    })
+    output$plots_documentation_french <- renderText({
+      plots_help()$html_content_french
+    })
+
+    #maps_documentation
+    maps_help <- reactive({
+      temp_html_eng = tempfile(fileext = ".html")
+      temp_html_french = tempfile(fileext = ".html")
+      html_content_eng = HTML(
+        "<h2>Map Results</h2>
+        <h3>Description</h3>
+        <p>This page displays maps using data generated by the Data Summaries function.
+        First, select the folder containing your Data Summaries output, and load in the data.
+        Next, use the options on the sidebar to view and download the maps.</p>
+        <h3>Inputs</h3>
+        <ul><li>Folder containing the data tables generated by the Data Summaries function.</li>
+        <li>A .txt file listing sites in data.</li></ul>
+        <h3>Outputs</h3>
+        <ul>
+          <li>Maps using data generated by the Data Summaries function. Specifically uses:
+          <ul>
+            <li>*Rumbles_Site_Weekly_Summaries.txt</li>
+            <li>*Rumbles_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Site.txt</li>
+          </ul></li>
+        </ul>
+        <h3>Author(s)</h3>
+        <p>Jidapa Janpathompong</p>")
+      html_content_french = HTML(
+        "<h2>Résultats de la Carte</h2>
+        <h3>Description</h3>
+        <p>Cette page affiche des cartes réalisées à partir des données générées par la fonction Data Summaries.
+        Sélectionnez d'abord le dossier contenant les données générées par la fonction Data Summaries, puis chargez-y les données.
+        Ensuite, utilisez les options de la barre latérale pour visualiser et télécharger les cartes.</p>
+        <h3>Entrées</h3>
+        <ul><li>Dossier contenant les tableaux de données générés par la fonction Data Summaries.</li>
+        <li>Un fichier .txt listant les sites dans les données.</li></ul>
+        <h3>Sorties</h3>
+        <ul>
+          <li>Cartes utilisant les données générées par la fonction Data Summaries. Utilise plus précisément:
+          <ul>
+            <li>*Rumbles_Site_Weekly_Summaries.txt</li>
+            <li>*Rumbles_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Site.txt</li>
+          </ul></li>
+        </ul>
+        <h3>Auteurs</h3>
+        <p>Jidapa Janpathompong</p>")
+      cat(html_content_eng, file = temp_html_eng)
+      cat(html_content_french, file = temp_html_french)
+      list(
+        html_path_eng = temp_html_eng,
+        html_path_french = temp_html_french,
+        html_content_eng = html_content_eng,
+        html_content_french = html_content_french
+      )
+    })
+    output$download_maps_help_eng <- downloadHandler(
+      filename = function(){
+        "maps_help.pdf"
+      },
+      content = function(file){
+        webshot2::webshot(url = maps_help()$html_path_eng, file = file)
+      }
+    )
+    output$download_maps_help_french <- downloadHandler(
+      filename = function(){
+        "maps_help.pdf"
+      },
+      content = function(file){
+        webshot2::webshot(url = maps_help()$html_path_french, file = file)
+      }
+    )
+    output$maps_documentation_eng <- renderText({
+      maps_help()$html_content_eng
+    })
+    output$maps_documentation_french <- renderText({
+      maps_help()$html_content_french
+    })
+
+    #all documentation
+    all_help <- reactive({
+      combined_html <- str_c(
+        HTML(
+          "<h1>ElpR App HELP Documents</h1>
+          <h2>Table of Contents</h2>
+          <ul>
+            <li>Sound Check</li>
+            <li>Exclude Bad Sounds</li>
+            <li>Rumble Selection Table Restructure</li>
+            <li>Gunshot Selection Table Restructure</li>
+            <li>Merge Selection Tables</li>
+            <li>Data Summaries</li>
+            <li>Plot Results</li>
+            <li>Map Results</li>
+          </ul>"
+        ),
+        sound_check_help()$html_content,
+        exclude_files_help()$html_content,
+        restructure_help()$html_content,
+        gun_restructure_help()$html_content,
+        general_restructure_help()$html_content,
+        summary_help()$html_content,
+        sep = HTML("<div style='page-break-after: always;'></div>")
+      )
+      combined_html_eng <- str_c(
+        combined_html,
+        plots_help()$html_content_eng,
+        maps_help()$html_content_eng,
+        sep = HTML("<div style='page-break-after: always;'></div>")
+      )
+      combined_html_french <- str_c(
+        combined_html,
+        plots_help()$html_content_french,
+        maps_help()$html_content_french,
+        sep = HTML("<div style='page-break-after: always;'></div>")
+      )
+      temp_html_eng = tempfile(fileext = ".html")
+      temp_html_french = tempfile(fileext = ".html")
+      cat(combined_html_eng, file = temp_html_eng)
+      cat(combined_html_french, file = temp_html_french)
+      list(
+        html_path_eng = temp_html_eng,
+        html_path_french = temp_html_french,
+        html_content_eng = HTML(read_file(temp_html_eng)),
+        html_content_french = HTML(read_file(temp_html_french))
+      )
+    })
+    output$download_all_help_eng <- downloadHandler(
+      filename = function(){
+        "help_documentation.pdf"
+      },
+      content = function(file){
+        webshot2::webshot(url = all_help()$html_path_eng, file = file)
+      }
+    )
+    output$download_all_help_french <- downloadHandler(
+      filename = function(){
+        "help_documentation.pdf"
+      },
+      content = function(file){
+        webshot2::webshot(url = all_help()$html_path_french, file = file)
+      }
+    )
+
   }
 
   #_______________________________________________________________________________
