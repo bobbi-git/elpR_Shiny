@@ -548,9 +548,14 @@ data_summaries_function <- function(
   # Add all dates to the daily summary dataframe and fill them with NA so they have gaps in time in the plot
   # allows gaps in plots (if random dates enabled, then there will be many gaps)
   # create a complete sequence of dates
-  date_range <- seq(min(daily_site_summary$Date),
-                    max(daily_site_summary$Date),
-                    by="day")
+  # Quick validation before seq()
+    date_range <- seq(min(daily_site_summary$Date, na.rm = TRUE),
+                      max(daily_site_summary$Date, na.rm = TRUE),
+                      by="day")
+  #
+  # date_range <- seq(min(daily_site_summary$Date),
+  #                   max(daily_site_summary$Date),
+  #                   by="day")
   # Create a data frame with all combinations of dates and strata
   complete_dates <- expand.grid(
     Date = date_range,
@@ -704,7 +709,7 @@ data_summaries_function <- function(
               quote=FALSE, append=FALSE)
 
   # Create a complete week timeseries and identify gaps in data so they are not plotted
-  week_range <- seq(min(rumble_weekly_means_site$WeekDate), max(rumble_weekly_means_site$WeekDate), by="7 days")
+  week_range <- seq(min(rumble_weekly_means_site$WeekDate, na.rm=TRUE), max(rumble_weekly_means_site$WeekDate, na.rm = TRUE), by="7 days")
   # Create a data frame with all combinations of dates and strata
   complete_weeks <- expand.grid(
     WeekDate = week_range,
@@ -1020,8 +1025,8 @@ data_summaries_function <- function(
 
   # Create complete time series
   all_dates <- seq.Date(
-    from = min(rumble_monthly_means$`Year-Month`),
-    to = max(rumble_monthly_means$`Year-Month`),
+    from = min(rumble_monthly_means$`Year-Month`, na.rm = TRUE),
+    to = max(rumble_monthly_means$`Year-Month`, na.rm = TRUE),
     by = "1 month"
   )
   # Create complete dataset with all months
@@ -1141,8 +1146,8 @@ data_summaries_function <- function(
   if("Strata" %in% names(daily_site_summary)){
     # Create complete time series
     all_dates <- seq.Date(
-      from = min(rumble_monthly_means_stratum$`Year-Month`),
-      to = max(rumble_monthly_means_stratum$`Year-Month`),
+      from = min(rumble_monthly_means_stratum$`Year-Month`, na.rm=TRUE),
+      to = max(rumble_monthly_means_stratum$`Year-Month`, na.rm=TRUE),
       by = "month"
     )
     all_strata <- unique(rumble_monthly_means_stratum$Strata)
@@ -1246,3 +1251,27 @@ data_summaries_function <- function(
   return("Finished!")
 
 }
+
+
+### Troubleshooting ####
+# output<- rstudioapi::selectDirectory(caption = "Select folder for the output to be saved",label = "Select",path = getwd())
+# sound_checks <- rstudioapi::selectDirectory(caption = "Select folder containing 'sound check' files",label = "Select",path = getwd())
+# ele_tables <- rstudioapi::selectDirectory(caption = "Select folder containing selection tables",label = "Select",path = getwd())
+# zero_txt <- rstudioapi::selectDirectory(caption = "Select folder containing 'zero days' selection tables",label = "Select",path = getwd())
+#
+# # choose the site file with latitude, longitude, "vegetation Class" (optional), "strata" (optional)
+# site_lat_long <- read.table("C:/Users/bje37/Documents/GitHub/elpR_Shiny/files_for_elpR/sites/DSPA_DZ_Sites.txt",
+#                             header = T, sep ="\t", check.names=FALSE,quote = "\"")# load general table for sites
+#
+# project_name <- "Dzanga" # name of project (e.g., "PNNN", "DzangaBai", "Kakum", etc.)
+# deployment_num <- "01-06" # deployment(s) number (e.g., "01-12", "04")
+# detector_name <- "HHv6" # # name of the detector used for these data. For HoriHarm:HHv6, FruitPunchAI: FPv1, Stanford Detector: SDv1. For other, type the name. Do not include spaces or special characters
+#
+# fileDurationMin <- 360 # duration in minutes of the expected sound file duration (60 for 1 hr, 1440 for 1 day)
+# sound_check_include <- "y" # if you have a sound_check file for this script to filter out bad sounds, choose "y", otherwise choose "n"
+# rand_dates_needed <- "y" # type "y" if so, type "n" of not
+# #zeroDays_table_exist <- "y" # if you used the rumble selection table restructure R script from the elpR package to restructure selection tables, a 'Zero Days' file was created. Select it from the folder above and choose "y". If not, choose "n"
+# ele_bad_sound_remove <- "y" # type "y" if sounds with <23 hrs of sound should be excluded. Type "n" if not
+# use_only_sites_provided <- "y" # choose "y" if you only want to include the sites that were listed in the site_lat_long file. This enables exclusion of other sites that may be in the selection tables.
+# # NOT IN YET: use_only_files_in_soundCheck <- "y" # do you want to exclude selections that do not occur on sound files listed in the sound check?
+# # create map of results <- "y" # do you want the data plottod on a map ("y" if yes)?
