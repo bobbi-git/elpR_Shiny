@@ -198,7 +198,7 @@ data_summaries_function <- function(
     for (i in det_sum_packages){
       if (!require(i, quietly = TRUE, character.only = TRUE)){
         install.packages(i)
-        library(i)
+        library(i, character.only = TRUE)
       }
     }
 
