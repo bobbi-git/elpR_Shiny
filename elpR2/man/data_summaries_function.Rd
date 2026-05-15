@@ -9,7 +9,6 @@ data_summaries_function(
   project_name,
   deployment_num,
   detector_name,
-  output,
   ele_tables,
   zero_txt,
   sound_check_include,
@@ -28,8 +27,6 @@ data_summaries_function(
 \item{deployment_num}{Deployment(s) number (e.g., 01-12, 04)}
 
 \item{detector_name}{Detector used (e.g., HoriHarm, FruitPunchAI, Stanford Detector)}
-
-\item{output}{Folder to save output files}
 
 \item{ele_tables}{Folder containing selection tables}
 
@@ -156,7 +153,7 @@ This function will:
 \itemize{
 \item Install and load necessary packages
 \item Read in data provided by the user (sound check files, random dates, selection tables, zero-day tables, sites file)
-\item Generate summary tables and plots that are saved to the output folder specified by the user
+\item Generate summary tables and plots that are saved to /data_summaries/summary_tables and /data_summaries/summary_plots, respectively
 }
 }
 \author{

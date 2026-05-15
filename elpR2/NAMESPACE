@@ -2,6 +2,7 @@
 
 export(data_summaries_function)
 export(elpRApp)
+export(maps_function)
 export(restructure_general_function)
 export(restructure_gunshot_function)
 export(restructure_rumble_function)

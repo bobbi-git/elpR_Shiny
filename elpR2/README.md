@@ -21,10 +21,11 @@ You can install the development version of elpR2 like so:
 
 2)  Navigate to /elpR2/elpR2.Rproj and open with RStudio
 
-3)  Install devtools by typing the following command in the console:
+3)  Install devtools and roxygen2 by typing the following command in the
+    console:
 
 ``` r
-install.packages("devtools")
+install.packages(c("devtools", "roxygen2"))
 ```
 
 4)  Build elpR2 package by clicking the “Install” button in the “Build”
@@ -57,7 +58,7 @@ elpRApp()
 Follow installation steps 2, 4, 6, and 7 each time you want to run the
 app. The elpR2 functions can be run from the app. Output files from the
 functions are placed in the “files_for_elpR” folder, unless indicated
-otherwise.
+otherwise. IMPORTANT: Do not change the folder organization structure!
 
 ## Available Functions
 
@@ -69,6 +70,7 @@ restructure_rumble_function()
 restructure_gunshot_function()
 restructure_general_function()
 data_summaries_function()
+maps_function()
 ```
 
 Function documentation for elpR2 can be viewed in the “HELP” tab within
