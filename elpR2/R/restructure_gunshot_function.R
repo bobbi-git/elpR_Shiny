@@ -149,7 +149,7 @@ restructure_gunshot_function <- function(
     gun_sound<-merge(gun_sort,sound_problem,by="Begin File",all.x=T)# cross-reference with sound problems if the table is empty and create dummy values
     gun_sound_exclude <- subset(gun_sound,`Exclude (y/e)` == "e" | `Exclude (y/e)` == "Good") # filter selection table only by good sounds and exclude bad sounds
     if (nrow(gun_sound_exclude) > 0) {
-      write.table(gun_sort,paste(parent_dir,"/Selection_Tables/gunshot/processed/",
+      write.table(gun_sound_exclude,paste(parent_dir,"/Selection_Tables/gunshot/processed/",
                                  file_size[i],sep=""),sep="\t",na="",col.names=TRUE,row.names=FALSE, quote=FALSE, append=FALSE) # If table has good sounds, save the table
      } # else {
     #   tryCatch({
@@ -265,46 +265,46 @@ restructure_gunshot_function <- function(
   saveWorkbook(wb,paste(parent_dir,"/sound_check/Sound_Check_Reports_",standard_name_disk,".xlsx",sep=""),returnValue=FALSE,overwrite=TRUE)
 
 
-# #### Create 'Zero-days' Sound Selection Table from Sound Check Table INSTEAD of numevents file ####
-#   sounds_det <- sound_check[!(sound_check$`Exclude (y/e)` %in% "y"),] # dataframe of sound files that excludes bad sounds
-#   sounds_det$`Current File Start DateTime` <- convertToDateTime(sounds_det$`Current File Start DateTime`,origin = "1900-01-01")
-#   sounds_det$Date <- as.Date(sounds_det$`Current File Start DateTime`)
-#   file_dets <- merge_filter %>% group_by(`Begin File`) %>% tally()# sum number of detections per sound file
-#   check_dets <- merge(sounds_det,file_dets,by=c("Begin File"),all.x=T)# merge the number of detection per sound file with the sound check file
-#   names(check_dets)[names(check_dets) == 'n'] <- 'Number of Gunshot Detections'
-#   check_dets$`Number of Gunshot Detections`[is.na(check_dets$`Number of Gunshot Detections`)] <-0
-#   # Time to midnight
-#   # Time from midnight
-#   # If duration exceeds time to midnight, then it's measured in time past midnight
-#   No_dets_table <- subset(check_dets,(`Number of Gunshot Detections`%in% "0"))  # isolate table to only days with 0 detections
-#
-#   # create new table based on sound_dets to summarize # minutes per day of recorder
-#   No_dets_table$Selection <- seq(1:nrow(No_dets_table))
-#   No_dets_table$View = "Spectrogram"
-#   No_dets_table$Channel = 1
-#   No_dets_table$`Begin Time (s)` = 20
-#   No_dets_table$`End Time (s)` = 60
-#   No_dets_table$`Low Freq (Hz)` = 10
-#   No_dets_table$`High Freq (Hz)` = 1000
-#   names(No_dets_table)[names(No_dets_table) == 'File Path'] <- 'Begin Path'
-#   No_dets_table$`File Offset (s)`= 20
-#   No_dets_table$'Begin Date' <- format(as.Date(str_extract(No_dets_table$'Begin File' ,"\\d{8}.\\d{6}"),"%Y%m%d"),"%m/%d/%Y")
-#   No_dets_table$`File Start DateTime` <- as.POSIXct(str_extract(No_dets_table$`Begin File`,"\\d{8}.\\d{6}"),format='%Y%m%d_%H%M%S',origin = "1970-01-01",tz="Africa/Brazzaville")  #  file start date and time from file name (_YYYYMMDD_HHMMSS)
-#   No_dets_table$`File Start Date`<-format(as.Date(str_extract(No_dets_table$'Begin File' ,"\\d{8}.\\d{6}"),"%Y%m%d"),"%m/%d/%Y")
-#   No_dets_table$`Begin Clock Time` <-format(No_dets_table$`File Start DateTime`,"%H:%M:%S") # Time of event
-#   No_dets_table$`Begin Hour` <- format(as.POSIXct( No_dets_table$`Begin Clock Time` ,format="%H:%M:%S"),"%H")# hour(gun_new$`Begin Clock Time`)
-#   No_dets_table$Site <- sub("_.*","",No_dets_table$`Begin File`)
-#   No_dets_table$Score <- "NA"
-#   No_dets_table$CFD <- "NA"
-#   No_dets_table$`Gun Type` <- "NA"
-#   No_dets_table$Notes <- paste("No detections on this sound file at the score threshold of",Filter_ScoreThreshold,sep=" ")
-#   No_dets_table$Analyst <- "NA"
-#   No_dets_table$Deployment <- deployment_num
-#   No_dets_table_new<-No_dets_table[c("Selection", "View", "Channel", "Begin Time (s)", "End Time (s)", "Low Freq (Hz)", "High Freq (Hz)",
-#                        "Begin Path", "File Offset (s)", "Begin File", "Begin Date","Begin Clock Time","Site", "Begin Hour",
-#                        "File Start Date", "Score", "CFD","Gun Type","Notes", "Analyst", "Deployment")] #reorder columns
-#   write.table(No_dets_table_new,file=paste("~/R/Bobbi_Scripts/Packages/elpR/Files/zero_days_SSTs/gunshot/",filtered_table_name,"_No_Dets.txt",sep=""),
-#               sep="\t",na="",col.names=TRUE,row.names=FALSE,quote=FALSE)
+ #### Create 'Zero-days' Sound Selection Table from Sound Check Table INSTEAD of numevents file ####
+   sounds_det <- sound_check[!(sound_check$`Exclude (y/e)` %in% "y"),] # dataframe of sound files that excludes bad sounds
+   sounds_det$`Current File Start DateTime` <- convertToDateTime(sounds_det$`Current File Start DateTime`,origin = "1900-01-01")
+   sounds_det$Date <- as.Date(sounds_det$`Current File Start DateTime`)
+   file_dets <- merge_filter %>% group_by(`Begin File`) %>% tally()# sum number of detections per sound file
+   check_dets <- merge(sounds_det,file_dets,by=c("Begin File"),all.x=T)# merge the number of detection per sound file with the sound check file
+   names(check_dets)[names(check_dets) == 'n'] <- 'Number of Gunshot Detections'
+   check_dets$`Number of Gunshot Detections`[is.na(check_dets$`Number of Gunshot Detections`)] <-0
+   # Time to midnight
+   # Time from midnight
+   # If duration exceeds time to midnight, then it's measured in time past midnight
+   No_dets_table <- subset(check_dets,(`Number of Gunshot Detections`%in% "0"))  # isolate table to only days with 0 detections
+
+   # create new table based on sound_dets to summarize # minutes per day of recorder
+   No_dets_table$Selection <- seq(1:nrow(No_dets_table))
+   No_dets_table$View = "Spectrogram"
+   No_dets_table$Channel = 1
+   No_dets_table$`Begin Time (s)` = 20
+   No_dets_table$`End Time (s)` = 60
+   No_dets_table$`Low Freq (Hz)` = 10
+   No_dets_table$`High Freq (Hz)` = 1000
+   names(No_dets_table)[names(No_dets_table) == 'File Path'] <- 'Begin Path'
+   No_dets_table$`File Offset (s)`= 20
+   No_dets_table$'Begin Date' <- format(as.Date(str_extract(No_dets_table$'Begin File' ,"\\d{8}.\\d{6}"),"%Y%m%d"),"%m/%d/%Y")
+   No_dets_table$`File Start DateTime` <- as.POSIXct(str_extract(No_dets_table$`Begin File`,"\\d{8}.\\d{6}"),format='%Y%m%d_%H%M%S',origin = "1970-01-01",tz="Africa/Brazzaville")  #  file start date and time from file name (_YYYYMMDD_HHMMSS)
+   No_dets_table$`File Start Date`<-format(as.Date(str_extract(No_dets_table$'Begin File' ,"\\d{8}.\\d{6}"),"%Y%m%d"),"%m/%d/%Y")
+   No_dets_table$`Begin Clock Time` <-format(No_dets_table$`File Start DateTime`,"%H:%M:%S") # Time of event
+   No_dets_table$`Begin Hour` <- format(as.POSIXct( No_dets_table$`Begin Clock Time` ,format="%H:%M:%S"),"%H")# hour(gun_new$`Begin Clock Time`)
+   No_dets_table$Site <- sub("_.*","",No_dets_table$`Begin File`)
+   No_dets_table$Score <- "NA"
+   No_dets_table$CFD <- "NA"
+   No_dets_table$`Gun Type` <- "NA"
+   No_dets_table$Notes <- paste("No detections on this sound file at the score threshold of",Filter_ScoreThreshold,sep=" ")
+   No_dets_table$Analyst <- "NA"
+   No_dets_table$Deployment <- deployment_num
+   No_dets_table_new<-No_dets_table[c("Selection", "View", "Channel", "Begin Time (s)", "End Time (s)", "Low Freq (Hz)", "High Freq (Hz)",
+                        "Begin Path", "File Offset (s)", "Begin File", "Begin Date","Begin Clock Time","Site", "Begin Hour",
+                        "File Start Date", "Score", "CFD","Gun Type","Notes", "Analyst", "Deployment")] #reorder columns
+   write.table(No_dets_table_new,file=paste("~/R/Bobbi_Scripts/Packages/elpR/Files/zero_days_SSTs/gunshot/",filtered_table_name,"_No_Dets.txt",sep=""),
+               sep="\t",na="",col.names=TRUE,row.names=FALSE,quote=FALSE)
 
 
   # #### Create 'Zero-days' Sound Selection Table from NumEvents INSTEAD of the sound check file ####
@@ -365,14 +365,24 @@ restructure_gunshot_function <- function(
   # dets_table2 <- merge(sound_dates,dets_dates,by=c("Site","Date"),all.x=T)# cross reference the detections with sound_check
   # dets_table2$`Number of Gunshot Detections`[is.na(dets_table2$`Number of Gunshot Detections`)] <-0
 
-#### delete all folders in the Processed folder ####
-  delete_all_folders <- function(path) {
-    # List all directories in the given path
-    dirs <- list.dirs(processed_gun, full.names = TRUE, recursive = FALSE)
-    # Remove each directory
-    sapply(dirs, unlink, recursive = TRUE)
-    cat("Deleted", length(dirs), "folders from", path, "\n")
-  }
+#### delete all folders/.txt files in the Processed folder ####
+    delete_all_folders <- function(path) {
+      # List all directories in the given path
+      dirs <- list.dirs(processed_gun, full.names = TRUE, recursive = FALSE)
+      # List all .txt files in the given path (non-recursive)
+      txt_files <- list.files(processed_gun, pattern = "\\.txt$", full.names = TRUE, recursive = FALSE)
+      if (length(dirs) > 0) {
+        sapply(dirs, unlink, recursive = TRUE)
+        cat("Deleted", length(dirs), "folders from", path, "\n")
+      }
+      if (length(txt_files) > 0) {
+        sapply(txt_files, unlink)
+        cat("Deleted", length(txt_files), ".txt files from", path, "\n")
+      }
+      if (length(dirs) == 0 && length(txt_files) == 0) {
+        cat("No folders or .txt files found in", path, "\n")
+      }
+    }
     delete_all_folders(processed_gun)
 
     setwd(og_dir)
