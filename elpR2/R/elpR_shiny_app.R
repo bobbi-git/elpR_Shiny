@@ -1,7 +1,7 @@
 #Purpose of script: To make a shiny app for the elpR package.
 #Author: Jidapa Janpathompong
 #Date created: April 2025
-#Date last updated: May 1, 2026
+#Date last updated: April 22, 2026
 
 #Notes: This script is organized by sections in the UI:
 #ABOUT
@@ -28,7 +28,6 @@
 
 elpRApp <- function(){
   #load libraries
-  library(here) #here()
   library(shiny)
   library(bslib) #shiny layout functions
   library(shinyFiles) #shinyDirChoose(), parseDirPath()
@@ -39,8 +38,12 @@ elpRApp <- function(){
   library(ggplot2)
   library(Hmisc) #for loading monthly plots
   library(leaflet)
-  library(mapview) #mapshot2()
   library(dplyr) #summarize()
+  library(mapview) #mapshot()
+  library(webshot) #mapshot()
+  if(webshot::is_phantomjs_installed() == FALSE){
+    webshot::install_phantomjs()
+  } #related to downloading leaflet maps
   library(webshot2) #downloading help documentation
   library(DT) #datatable()
   library(stringr) #str_c()
@@ -59,9 +62,6 @@ elpRApp <- function(){
     )
     return(widget_with_icon)
   }
-
-  #retrieve files_for_elpR path
-  parent_dir_path <- paste0(dirname(here::here()), "/files_for_elpR")
 
   #_______________________________________________________________________________
   #### DEFINE UI ####
@@ -151,7 +151,6 @@ elpRApp <- function(){
     ##### body #####
     useShinyjs(),
     navlistPanel(
-      id = "tabs",
       well = TRUE,
 
       ###### ABOUT ######
@@ -162,7 +161,6 @@ elpRApp <- function(){
           uiOutput("text_welcome"),
           uiOutput("header_contributers"),
           uiOutput("text_contributers"),
-          actionLink("link_to_HELP_page", uiOutput("text_link")),
           "\n",
           "\n",
           "\n",
@@ -178,10 +176,13 @@ elpRApp <- function(){
         layout_columns(
           card(
             card_header(textOutput("card_1_1")),
-            add_info(textInput("deployment_name_in", label = uiOutput("card_1_1_dep_name"), value = "kk_202405_may"), "deployment_name"),
-            add_info(textInput("deployment_num_in", label = uiOutput("card_1_1_dep_num"), value = "02"), "deployment_num"),
-            add_info(textInput("disk_ID_in", label = uiOutput("card_1_1_disk_ID"), value = "00"), "disk_ID"),
-            add_info(fileInput("sites_in", label = uiOutput("card_1_1_sites")), "sites")
+            add_info(textInput("deployment_name_in", label = textOutput("card_1_1_dep_name"), value = "kk_202405_may"), "deployment_name"),
+            add_info(textInput("deployment_num_in", label = textOutput("card_1_1_dep_num"), value = "02"), "deployment_num"),
+            add_info(textInput("disk_ID_in", label = textOutput("card_1_1_disk_ID"), value = "00"), "disk_ID"),
+            add_info(fileInput("sites_in", label = textOutput("card_1_1_sites")), "sites"),
+            textOutput("card_1_1_parent_dir"),
+            add_info(shinyDirButton(id = "parent_dir_in", label = NULL, icon = icon("folder-open"), title = "Choose the files_for_elpR folder"), "parent_dir"),
+            textOutput("parent_dir_recieved")
           ),
 
           "\n",
@@ -199,12 +200,12 @@ elpRApp <- function(){
           card(
             card_header(textOutput("card_1_2")),
 
-            uiOutput("card_1_2_sound_path"),
+            textOutput("card_1_2_sound_path"),
             add_info(shinyDirButton(id = "sound_path_in", label = NULL, icon = icon("folder-open"), title = "Choose folder containing sound files"), "x"),
             textOutput("sound_path_recieved"),
-            add_info(numericInput("fileDurationMin_in", label = uiOutput("card_1_2_file_dur"), value = 14000), "fileDurationMin"),
-            add_info(numericInput("sample_rate_in", label = uiOutput("card_1_2_samp_rate"), value = 8000), "sample_rate"),
-            add_info(selectInput("sound_file_ext_in", label = uiOutput("card_1_2_file_ext"), choices = list(".wav", ".flac", ".aiff")), "sound_file_ext"),
+            add_info(numericInput("fileDurationMin_in", label = textOutput("card_1_2_file_dur"), value = 14000), "fileDurationMin"),
+            add_info(numericInput("sample_rate_in", label = textOutput("card_1_2_samp_rate"), value = 8000), "sample_rate"),
+            add_info(selectInput("sound_file_ext_in", label = textOutput("card_1_2_file_ext"), choices = list(".wav", ".flac", ".aiff")), "sound_file_ext"),
           ),
 
           card(
@@ -232,10 +233,10 @@ elpRApp <- function(){
           card(
             card_header(textOutput("card_1_3")),
 
-            uiOutput("card_1_3_path"),
+            textOutput("card_1_3_path"),
             add_info(shinyDirButton(id = "extra_sounds_in", label = NULL, icon = icon("folder-open"), title = "Choose folder to output extra sounds"), "extra_sounds_folder"),
             textOutput("extra_sounds_recieved"),
-            add_info(radioButtons("have_swift_files_in", label = uiOutput("card_1_3_have_swift"),
+            add_info(radioButtons("have_swift_files_in", label = textOutput("card_1_3_have_swift"),
                                   choices = list("Yes", "No"), selected = "No"), "have_SwiftFiles"),
             uiOutput("merge_swift_files_output")
           ),
@@ -274,15 +275,15 @@ elpRApp <- function(){
                 card(
                   card_header(textOutput("card_1_4_1")),
 
-                  add_info(textInput("sample_rate_chr_in", label = uiOutput("card_1_4_1_samp_rate"), value = "8kHz"), "sample_rate"),
-                  add_info(radioButtons("three_rand_days_in", label = uiOutput("card_1_4_1_rand"),
+                  add_info(textInput("sample_rate_chr_in", label = textOutput("card_1_4_1_samp_rate"), value = "8kHz"), "sample_rate"),
+                  add_info(radioButtons("three_rand_days_in", label = textOutput("card_1_4_1_rand"),
                                         choices = list("Yes", "No"), selected = "Yes"), "three_rand_days"),
-                  add_info(radioButtons("min_23hours_in", label = uiOutput("card_1_4_1_min_hrs"),
+                  add_info(radioButtons("min_23hours_in", label = textOutput("card_1_4_1_min_hrs"),
                                         choices = list("Yes", "No"), selected = "Yes"), "min_23hrs"),
-                  add_info(textInput("score_column_name_in", label = uiOutput("card_1_4_1_col_name"), value = "Score"), "score_column_name"),
-                  add_info(selectInput("detector_in", label = uiOutput("card_1_4_1_detect"), choices = list("HoriHarm", "FruitPunchAI", "Stanford Detector")), "Detector"),
-                  add_info(numericInput("detector_score_in", label = uiOutput("card_1_4_1_detect_score"), value = 0.2), "Detector_ScoreThreshold"),
-                  add_info(numericInput("filter_score_in", label = uiOutput("card_1_4_1_filt_score"), value = 0.4), "Filter_ScoreThreshold")
+                  add_info(textInput("score_column_name_in", label = textOutput("card_1_4_1_col_name"), value = "Score"), "score_column_name"),
+                  add_info(selectInput("detector_in", label = textOutput("card_1_4_1_detect"), choices = list("HoriHarm", "FruitPunchAI", "Stanford Detector")), "Detector"),
+                  add_info(numericInput("detector_score_in", label = textOutput("card_1_4_1_detect_score"), value = 0.2), "Detector_ScoreThreshold"),
+                  add_info(numericInput("filter_score_in", label = textOutput("card_1_4_1_filt_score"), value = 0.4), "Filter_ScoreThreshold")
                 ),
 
                 card(
@@ -308,10 +309,10 @@ elpRApp <- function(){
                 card(
                   card_header(textOutput("card_1_4_2")),
 
-                  add_info(textInput("sample_rate_chr_gun_in", label = uiOutput("card_1_4_2_samp_rate"), value = "8kHz"), "sample_rate"),
-                  add_info(selectInput("detector_gun_in", uiOutput("card_1_4_2_detect"), choices = list("DTDguns8")), "Detector"),
-                  add_info(numericInput("detector_score_gun_in", label = uiOutput("card_1_4_2_detect_score"), value = 0.53), "Detector_ScoreThreshold"),
-                  add_info(numericInput("filter_score_gun_in", label = uiOutput("card_1_4_2_filt_score"), value = 0.53), "Filter_ScoreThreshold")
+                  add_info(textInput("sample_rate_chr_gun_in", label = textOutput("card_1_4_2_samp_rate"), value = "8kHz"), "sample_rate"),
+                  add_info(selectInput("detector_gun_in", textOutput("card_1_4_2_detect"), choices = list("DTDguns8")), "Detector"),
+                  add_info(numericInput("detector_score_gun_in", label = textOutput("card_1_4_2_detect_score"), value = 0.53), "Detector_ScoreThreshold"),
+                  add_info(numericInput("filter_score_gun_in", label = textOutput("card_1_4_2_filt_score"), value = 0.53), "Filter_ScoreThreshold")
                 ),
 
                 card(
@@ -337,7 +338,7 @@ elpRApp <- function(){
                 card(
                   card_header(textOutput("card_1_4_3")),
 
-                  uiOutput("card_1_4_3_path"),
+                  textOutput("card_1_4_3_path"),
                   add_info(shinyDirButton(id = "general_merge_in", label = NULL, icon = icon("folder-open"), title = "Choose folder containing tables to merge"), "path"),
                   textOutput("general_merge_recieved"),
                   add_info(uiOutput("recursive_out"), "recursive")
@@ -373,14 +374,16 @@ elpRApp <- function(){
           card(
             card_header(textOutput("card_1_5")),
 
-            add_info(textInput("project_name_in", label = uiOutput("card_1_5_proj"), value = "PNNN"), "project_name"),
-            add_info(textInput("deployment_nums_in", label = uiOutput("card_1_5_dep_num"), value = "01-20"), "deployment_num"),
-            add_info(selectInput("summary_detector_in", uiOutput("card_1_5_detect"), choices = list("HoriHarm", "FruitPunchAI", "Stanford Detector")), "detector_name"),
+            add_info(textInput("project_name_in", label = textOutput("card_1_5_proj"), value = "PNNN"), "project_name"),
+            add_info(textInput("deployment_nums_in", label = textOutput("card_1_5_dep_num"), value = "01-20"), "deployment_num"),
+            add_info(selectInput("summary_detector_in", textOutput("card_1_5_detect"), choices = list("HoriHarm", "FruitPunchAI", "Stanford Detector")), "detector_name"),
+            textOutput("card_1_5_out_path"),
+            add_info(shinyDirButton(id = "summary_folder_in", label = NULL, icon = icon("folder-open"), title = "Choose folder to output data summaries"), "output"),
             textOutput("summary_folder_recieved"),
-            uiOutput("card_1_5_tables_path"),
+            textOutput("card_1_5_tables_path"),
             add_info(shinyDirButton(id = "selection_tables_folder_in", label = NULL, icon = icon("folder-open"), title = "Choose folder containing selection tables"), "ele_tables"),
             textOutput("selection_tables_folder_recieved"),
-            uiOutput("card_1_5_zero_path"),
+            textOutput("card_1_5_zero_path"),
             add_info(shinyDirButton(id = "zero_selection_tables_folder_in", label = NULL, icon = icon("folder-open"), title = "Choose folder containing zero-day selection tables"), "zero_txt"),
             textOutput("zero_selection_tables_folder_recieved")
           ),
@@ -388,17 +391,17 @@ elpRApp <- function(){
           card(
             card_header(textOutput("card_2_5")),
 
-            add_info(radioButtons("sound_check_include_in", label = uiOutput("card_2_5_sound_include"),
+            add_info(radioButtons("sound_check_include_in", label = textOutput("card_2_5_sound_include"),
                                   choices = list("Yes", "No"), selected = "No"), "sound_check_include"),
-            uiOutput("card_2_5_sound_path"),
+            textOutput("card_2_5_sound_path"),
             uiOutput("sound_check_include_output"),
             textOutput("sound_check_folder_recieved"),
-            add_info(radioButtons("use_only_sites_provided_in", label = uiOutput("card_2_5_sites_include"),
+            add_info(radioButtons("use_only_sites_provided_in", label = textOutput("card_2_5_sites_include"),
                                   choices = list("Yes", "No"), selected = "No"), "use_only_sites_provided"),
             uiOutput("use_only_sites_provided_output"),
-            add_info(radioButtons("rand_dates_needed_in", label = uiOutput("card_2_5_rand"),
+            add_info(radioButtons("rand_dates_needed_in", label = textOutput("card_2_5_rand"),
                                   choices = list("Yes", "No"), selected = "No"), "rand_dates_needed"),
-            add_info(radioButtons("ele_bad_sound_remove_in", label = uiOutput("card_2_5_min_hrs"),
+            add_info(radioButtons("ele_bad_sound_remove_in", label = textOutput("card_2_5_min_hrs"),
                                   choices = list("Yes", "No"), selected = "No"), "ele_bad_sound_remove")
           ),
 
@@ -434,9 +437,10 @@ elpRApp <- function(){
                 card(
                   card_header(textOutput("card_1_6_1")),
 
-                  textOutput("card_1_6_1_instruction"),
-                  actionButton("check_plots_info_in", textOutput("card_1_6_1_check")),
-                  tableOutput("check_plots_info_output"),
+                  textOutput("card_1_6_1_path"),
+                  shinyDirButton(id = "saved_plots_folder_in", label = NULL, icon = icon("folder-open"), title = "Choose folder containing .Rds file"),
+                  textOutput("saved_plots_folder_recieved"),
+                  textInput("saved_plots_file_in", label = textOutput("card_1_6_1_rds"), value = "saved_plots.Rds"),
                   input_task_button("load_plots", textOutput("card_1_6_1_run")),
                 ),
 
@@ -468,10 +472,10 @@ elpRApp <- function(){
                 card(
                   card_header(textOutput("card_1_6_2")),
 
-                  textOutput("card_1_6_2_instruction"),
-                  fileInput("site_lat_long_map", label = uiOutput("card_1_6_2_sites")),
-                  actionButton("check_maps_info_in", textOutput("card_1_6_2_check")),
-                  tableOutput("check_maps_info_output"),
+                  textOutput("card_1_6_2_path"),
+                  shinyDirButton(id = "saved_tables_folder_in", label = NULL, icon = icon("folder-open"), title = "Choose folder containing data summary tables"),
+                  textOutput("saved_tables_folder_recieved"),
+                  fileInput("site_lat_long_map", label = textOutput("card_1_6_2_sites")),
                   input_task_button("load_tables", textOutput("card_1_6_2_run")),
                 ),
 
@@ -482,7 +486,6 @@ elpRApp <- function(){
                       p(uiOutput("card_2_6_2_map")),
                       p(id = "placeholder2")
                     ),
-                    uiOutput("temp_output"),
                     leafletOutput("map_output"),
                     downloadButton("download_maps", textOutput("card_2_6_2_save")),
                   )
@@ -509,7 +512,6 @@ elpRApp <- function(){
       ###### HELP ######
       tabPanel(
         textOutput("tab_help"),
-        value = "HELP_page", #like an id for this tab
         layout_columns(
           accordion(
             open = FALSE,
@@ -538,7 +540,7 @@ elpRApp <- function(){
   #_______________________________________________________________________________
   #### DEFINE SERVER LOGIC ####
 
-  server <- function(input, output, session) {
+  server <- function(input, output) {
     #______________________________________
     ##### header #####
     #render logos
@@ -567,19 +569,21 @@ elpRApp <- function(){
     output$text_welcome <- renderUI({text_welcome_eng})
     output$header_contributers <- renderUI({header_contributers_eng})
     output$text_contributers <- renderUI({text_contributers_eng})
-    output$text_link <- renderUI({text_link_eng})
 
     output$card_1_1 <- renderText({card_1_1_eng})
-    output$card_1_1_dep_name <- renderUI({card_1_1_dep_name_eng})
+    output$card_1_1_dep_name <- renderText({card_1_1_dep_name_eng})
     output$card_1_1_dep_num <- renderText({card_1_1_dep_num_eng})
     output$card_1_1_disk_ID <- renderText({card_1_1_disk_ID_eng})
     output$card_1_1_sites <- renderText({card_1_1_sites_eng})
+    output$card_1_1_parent_dir <- renderText({card_1_1_parent_dir_eng})
+    output$choose_a_folder <- renderText({choose_a_folder_eng})
+    output$parent_dir_recieved <- renderText({card_1_1_dir_recieved_eng()})
 
     output$card_1_2 <- renderText({card_1_2_eng})
-    output$card_1_2_sound_path <- renderUI({card_1_2_sound_path_eng})
-    output$card_1_2_file_dur <- renderUI({card_1_2_file_dur_eng})
-    output$card_1_2_samp_rate <- renderUI({card_1_2_samp_rate_eng})
-    output$card_1_2_file_ext <- renderUI({card_1_2_file_ext_eng})
+    output$card_1_2_sound_path <- renderText({card_1_2_sound_path_eng})
+    output$card_1_2_file_dur <- renderText({card_1_2_file_dur_eng})
+    output$card_1_2_samp_rate <- renderText({card_1_2_samp_rate_eng})
+    output$card_1_2_file_ext <- renderText({card_1_2_file_ext_eng})
     output$card_2_2 <- renderText({card_2_2_eng})
     output$card_2_2_check <- renderText({card_2_2_check_eng})
     output$card_2_2_run <- renderText({card_2_2_run_eng})
@@ -587,9 +591,9 @@ elpRApp <- function(){
     output$sound_path_recieved <- renderText({sound_path_recieved_eng()})
 
     output$card_1_3 <- renderText({card_1_3_eng})
-    output$card_1_3_path <- renderUI({card_1_3_path_eng})
-    output$card_1_3_have_swift <- renderUI({card_1_3_have_swift_eng})
-    output$card_1_3_merge_swift <- renderUI({card_1_3_merge_swift_eng})
+    output$card_1_3_path <- renderText({card_1_3_path_eng})
+    output$card_1_3_have_swift <- renderText({card_1_3_have_swift_eng})
+    output$card_1_3_merge_swift <- renderText({card_1_3_merge_swift_eng})
     output$card_2_3 <- renderText({card_2_3_eng})
     output$card_2_3_check <- renderText({card_2_2_check_eng})
     output$card_2_3_run <- renderText({card_2_3_eng})
@@ -598,23 +602,23 @@ elpRApp <- function(){
 
     output$tab_4_pills <- renderText({tab_4_pills_eng})
     output$card_1_4_1 <- renderText({card_1_4_1_eng})
-    output$card_1_4_1_samp_rate <- renderUI({card_1_4_1_samp_rate_eng})
-    output$card_1_4_1_rand <- renderUI({card_1_4_1_rand_eng})
-    output$card_1_4_1_min_hrs <- renderUI({card_1_4_1_min_hrs_eng})
-    output$card_1_4_1_col_name <- renderUI({card_1_4_1_col_name_eng})
-    output$card_1_4_1_detect <- renderUI({card_1_4_1_detect_eng})
-    output$card_1_4_1_detect_score <- renderUI({card_1_4_1_detect_score_eng})
-    output$card_1_4_1_filt_score <- renderUI({card_1_4_1_filt_score_eng})
+    output$card_1_4_1_samp_rate <- renderText({card_1_4_1_samp_rate_eng})
+    output$card_1_4_1_rand <- renderText({card_1_4_1_rand_eng})
+    output$card_1_4_1_min_hrs <- renderText({card_1_4_1_min_hrs_eng})
+    output$card_1_4_1_col_name <- renderText({card_1_4_1_col_name_eng})
+    output$card_1_4_1_detect <- renderText({card_1_4_1_detect_eng})
+    output$card_1_4_1_detect_score <- renderText({card_1_4_1_detect_score_eng})
+    output$card_1_4_1_filt_score <- renderText({card_1_4_1_filt_score_eng})
     output$card_2_4_1 <- renderText({card_2_4_1_eng})
     output$card_2_4_1_check <- renderText({card_2_2_check_eng})
     output$card_2_4_1_run <- renderText({card_2_4_1_eng})
     output$card_2_4_1_preview <- renderText({card_2_2_preview_eng})
 
     output$card_1_4_2 <- renderText({card_1_4_2_eng})
-    output$card_1_4_2_samp_rate <- renderUI({card_1_4_2_samp_rate_eng})
-    output$card_1_4_2_detect <- renderUI({card_1_4_2_detect_eng})
-    output$card_1_4_2_detect_score <- renderUI({card_1_4_2_detect_score_eng})
-    output$card_1_4_2_filt_score <- renderUI({card_1_4_2_filt_score_eng})
+    output$card_1_4_2_samp_rate <- renderText({card_1_4_2_samp_rate_eng})
+    output$card_1_4_2_detect <- renderText({card_1_4_2_detect_eng})
+    output$card_1_4_2_detect_score <- renderText({card_1_4_2_detect_score_eng})
+    output$card_1_4_2_filt_score <- renderText({card_1_4_2_filt_score_eng})
     output$card_2_4_2 <- renderText({card_2_4_2_eng})
     output$card_2_4_2_check <- renderText({card_2_2_check_eng})
     output$card_2_4_2_run <- renderText({card_2_4_2_eng})
@@ -630,29 +634,30 @@ elpRApp <- function(){
     output$card_2_4_3_preview <- renderText({card_2_2_preview_eng})
 
     output$card_1_5 <- renderText({card_1_5_eng})
-    output$card_1_5_proj <- renderUI({card_1_5_proj_eng})
-    output$card_1_5_dep_num <- renderUI({card_1_5_dep_num_eng})
-    output$card_1_5_detect <- renderUI({card_1_5_detect_eng})
-    output$card_1_5_out_path <- renderUI({card_1_5_out_path_eng})
-    output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
+    output$card_1_5_proj <- renderText({card_1_5_proj_eng})
+    output$card_1_5_dep_num <- renderText({card_1_5_dep_num_eng})
+    output$card_1_5_detect <- renderText({card_1_5_detect_eng})
+    output$card_1_5_out_path <- renderText({card_1_5_out_path_eng})
+    output$summary_folder_recieved <- renderText({summary_folder_recieved_eng()})
+    output$card_1_5_tables_path <- renderText({card_1_5_tables_path_eng})
     output$selection_tables_folder_recieved <- renderText({selection_tables_folder_recieved_eng()})
-    output$card_1_5_zero_path <- renderUI({card_1_5_zero_path_eng})
+    output$card_1_5_zero_path <- renderText({card_1_5_zero_path_eng})
     output$zero_selection_tables_folder_recieved <- renderText({zero_selection_tables_folder_recieved_eng()})
     output$card_2_5 <- renderText({card_2_5_eng})
-    output$card_2_5_sound_include <- renderUI({card_2_5_sound_include_eng})
-    output$card_2_5_sites_include <- renderUI({card_2_5_sites_include_eng})
+    output$card_2_5_sound_include <- renderText({card_2_5_sound_include_eng})
+    output$card_2_5_sites_include <- renderText({card_2_5_sites_include_eng})
     observeEvent(input$sound_check_include_in, {
       if(input$sound_check_include_in == "Yes" & translate_val() == 0){
-        output$card_2_5_sound_path <- renderUI({card_2_5_sound_path_eng})
+        output$card_2_5_sound_path <- renderText({card_2_5_sound_path_eng})
         output$sound_check_folder_recieved <- renderText({sound_check_folder_recieved_eng()})
       } else if(input$sound_check_include_in == "Yes" & translate_val() == 1){
-        output$card_2_5_sound_path <- renderUI({card_2_5_sound_path_french})
+        output$card_2_5_sound_path <- renderText({card_2_5_sound_path_french})
         output$sound_check_folder_recieved <- renderText({sound_check_folder_recieved_french()})
       }
     })
-    output$card_2_5_sites <- renderUI({card_2_5_sites_eng})
-    output$card_2_5_rand <- renderUI({card_2_5_rand_eng})
-    output$card_2_5_min_hrs <- renderUI({card_2_5_min_hrs_eng})
+    output$card_2_5_sites <- renderText({card_2_5_sites_eng})
+    output$card_2_5_rand <- renderText({card_2_5_rand_eng})
+    output$card_2_5_min_hrs <- renderText({card_2_5_min_hrs_eng})
     output$card_3_5 <- renderText({card_3_5_eng})
     output$card_3_5_check <- renderText({card_2_2_check_eng})
     output$card_3_5_run <- renderText({card_3_5_eng})
@@ -660,9 +665,9 @@ elpRApp <- function(){
 
     output$tab_6_pill_1 <- renderText({tab_6_pill_1_eng})
     output$card_1_6_1 <- renderText({card_1_6_1_eng})
-    output$card_1_6_1_path <- renderUI({card_1_6_1_path_eng})
-    output$card_1_6_1_instruction <- renderText({card_1_6_1_instruction_eng})
-    output$card_1_6_1_check <- renderText({card_2_2_check_eng})
+    output$card_1_6_1_path <- renderText({card_1_6_1_path_eng})
+    output$saved_plots_folder_recieved <- renderText({saved_plots_folder_recieved_eng()})
+    output$card_1_6_1_rds <- renderText({card_1_6_1_rds_eng})
     output$card_1_6_1_run <- renderText({card_1_6_1_run_eng})
     output$card_1_6_1_message <- renderText({card_1_6_1_message_eng})
     output$card_2_6_1_plot <- renderUI({card_2_6_1_plot_eng})
@@ -676,9 +681,9 @@ elpRApp <- function(){
 
     output$tab_6_pill_2 <- renderText({tab_6_pill_2_eng})
     output$card_1_6_2 <- renderText({card_1_6_1_eng})
-    output$card_1_6_2_instruction <- renderText({card_1_6_1_instruction_eng})
-    output$card_1_6_2_check <- renderText({card_2_2_check_eng})
-    output$card_1_6_2_sites <- renderUI({card_1_6_2_sites_eng})
+    output$card_1_6_2_path <- renderText({card_1_6_2_path_eng})
+    output$saved_tables_folder_recieved <- renderText({saved_tables_folder_recieved_eng()})
+    output$card_1_6_2_sites <- renderText({card_1_6_2_sites_eng})
     output$card_1_6_2_run <- renderText({card_1_6_2_run_eng})
     output$card_2_6_2_map <- renderUI({card_2_6_2_map_eng})
     output$card_2_6_2_map_input <- renderText({card_2_6_2_map_input_eng})
@@ -722,19 +727,21 @@ elpRApp <- function(){
       output$text_welcome <- renderUI({text_welcome_eng})
       output$header_contributers <- renderUI({header_contributers_eng})
       output$text_contributers <- renderUI({text_contributers_eng})
-      output$text_link <- renderUI({text_link_eng})
 
       output$card_1_1 <- renderText({card_1_1_eng})
-      output$card_1_1_dep_name <- renderUI({card_1_1_dep_name_eng})
+      output$card_1_1_dep_name <- renderText({card_1_1_dep_name_eng})
       output$card_1_1_dep_num <- renderText({card_1_1_dep_num_eng})
       output$card_1_1_disk_ID <- renderText({card_1_1_disk_ID_eng})
       output$card_1_1_sites <- renderText({card_1_1_sites_eng})
+      output$card_1_1_parent_dir <- renderText({card_1_1_parent_dir_eng})
+      output$choose_a_folder <- renderText({choose_a_folder_eng})
+      output$parent_dir_recieved <- renderText({card_1_1_dir_recieved_eng()})
 
       output$card_1_2 <- renderText({card_1_2_eng})
-      output$card_1_2_sound_path <- renderUI({card_1_2_sound_path_eng})
-      output$card_1_2_file_dur <- renderUI({card_1_2_file_dur_eng})
-      output$card_1_2_samp_rate <- renderUI({card_1_2_samp_rate_eng})
-      output$card_1_2_file_ext <- renderUI({card_1_2_file_ext_eng})
+      output$card_1_2_sound_path <- renderText({card_1_2_sound_path_eng})
+      output$card_1_2_file_dur <- renderText({card_1_2_file_dur_eng})
+      output$card_1_2_samp_rate <- renderText({card_1_2_samp_rate_eng})
+      output$card_1_2_file_ext <- renderText({card_1_2_file_ext_eng})
       output$card_2_2 <- renderText({card_2_2_eng})
       output$card_2_2_check <- renderText({card_2_2_check_eng})
       output$card_2_2_run <- renderText({card_2_2_run_eng})
@@ -742,9 +749,9 @@ elpRApp <- function(){
       output$sound_path_recieved <- renderText({sound_path_recieved_eng()})
 
       output$card_1_3 <- renderText({card_1_3_eng})
-      output$card_1_3_path <- renderUI({card_1_3_path_eng})
-      output$card_1_3_have_swift <- renderUI({card_1_3_have_swift_eng})
-      output$card_1_3_merge_swift <- renderUI({card_1_3_merge_swift_eng})
+      output$card_1_3_path <- renderText({card_1_3_path_eng})
+      output$card_1_3_have_swift <- renderText({card_1_3_have_swift_eng})
+      output$card_1_3_merge_swift <- renderText({card_1_3_merge_swift_eng})
       output$card_2_3 <- renderText({card_2_3_eng})
       output$card_2_3_check <- renderText({card_2_2_check_eng})
       output$card_2_3_run <- renderText({card_2_3_eng})
@@ -753,23 +760,23 @@ elpRApp <- function(){
 
       output$tab_4_pills <- renderText({tab_4_pills_eng})
       output$card_1_4_1 <- renderText({card_1_4_1_eng})
-      output$card_1_4_1_samp_rate <- renderUI({card_1_4_1_samp_rate_eng})
-      output$card_1_4_1_rand <- renderUI({card_1_4_1_rand_eng})
-      output$card_1_4_1_min_hrs <- renderUI({card_1_4_1_min_hrs_eng})
-      output$card_1_4_1_col_name <- renderUI({card_1_4_1_col_name_eng})
-      output$card_1_4_1_detect <- renderUI({card_1_4_1_detect_eng})
-      output$card_1_4_1_detect_score <- renderUI({card_1_4_1_detect_score_eng})
-      output$card_1_4_1_filt_score <- renderUI({card_1_4_1_filt_score_eng})
+      output$card_1_4_1_samp_rate <- renderText({card_1_4_1_samp_rate_eng})
+      output$card_1_4_1_rand <- renderText({card_1_4_1_rand_eng})
+      output$card_1_4_1_min_hrs <- renderText({card_1_4_1_min_hrs_eng})
+      output$card_1_4_1_col_name <- renderText({card_1_4_1_col_name_eng})
+      output$card_1_4_1_detect <- renderText({card_1_4_1_detect_eng})
+      output$card_1_4_1_detect_score <- renderText({card_1_4_1_detect_score_eng})
+      output$card_1_4_1_filt_score <- renderText({card_1_4_1_filt_score_eng})
       output$card_2_4_1 <- renderText({card_2_4_1_eng})
       output$card_2_4_1_check <- renderText({card_2_2_check_eng})
       output$card_2_4_1_run <- renderText({card_2_4_1_eng})
       output$card_2_4_1_preview <- renderText({card_2_2_preview_eng})
 
       output$card_1_4_2 <- renderText({card_1_4_2_eng})
-      output$card_1_4_2_samp_rate <- renderUI({card_1_4_2_samp_rate_eng})
-      output$card_1_4_2_detect <- renderUI({card_1_4_2_detect_eng})
-      output$card_1_4_2_detect_score <- renderUI({card_1_4_2_detect_score_eng})
-      output$card_1_4_2_filt_score <- renderUI({card_1_4_2_filt_score_eng})
+      output$card_1_4_2_samp_rate <- renderText({card_1_4_2_samp_rate_eng})
+      output$card_1_4_2_detect <- renderText({card_1_4_2_detect_eng})
+      output$card_1_4_2_detect_score <- renderText({card_1_4_2_detect_score_eng})
+      output$card_1_4_2_filt_score <- renderText({card_1_4_2_filt_score_eng})
       output$card_2_4_2 <- renderText({card_2_4_2_eng})
       output$card_2_4_2_check <- renderText({card_2_2_check_eng})
       output$card_2_4_2_run <- renderText({card_2_4_2_eng})
@@ -785,24 +792,25 @@ elpRApp <- function(){
       output$card_2_4_3_preview <- renderText({card_2_2_preview_eng})
 
       output$card_1_5 <- renderText({card_1_5_eng})
-      output$card_1_5_proj <- renderUI({card_1_5_proj_eng})
-      output$card_1_5_dep_num <- renderUI({card_1_5_dep_num_eng})
-      output$card_1_5_detect <- renderUI({card_1_5_detect_eng})
-      output$card_1_5_out_path <- renderUI({card_1_5_out_path_eng})
-      output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
+      output$card_1_5_proj <- renderText({card_1_5_proj_eng})
+      output$card_1_5_dep_num <- renderText({card_1_5_dep_num_eng})
+      output$card_1_5_detect <- renderText({card_1_5_detect_eng})
+      output$card_1_5_out_path <- renderText({card_1_5_out_path_eng})
+      output$summary_folder_recieved <- renderText({summary_folder_recieved_eng()})
+      output$card_1_5_tables_path <- renderText({card_1_5_tables_path_eng})
       output$selection_tables_folder_recieved <- renderText({selection_tables_folder_recieved_eng()})
-      output$card_1_5_zero_path <- renderUI({card_1_5_zero_path_eng})
+      output$card_1_5_zero_path <- renderText({card_1_5_zero_path_eng})
       output$zero_selection_tables_folder_recieved <- renderText({zero_selection_tables_folder_recieved_eng()})
       output$card_2_5 <- renderText({card_2_5_eng})
-      output$card_2_5_sound_include <- renderUI({card_2_5_sound_include_eng})
-      output$card_2_5_sites_include <- renderUI({card_2_5_sites_include_eng})
+      output$card_2_5_sound_include <- renderText({card_2_5_sound_include_eng})
+      output$card_2_5_sites_include <- renderText({card_2_5_sites_include_eng})
       if(input$sound_check_include_in == "Yes"){
-        output$card_2_5_sound_path <- renderUI({card_2_5_sound_path_eng})
+        output$card_2_5_sound_path <- renderText({card_2_5_sound_path_eng})
         output$sound_check_folder_recieved <- renderText({sound_check_folder_recieved_eng()})
       }
-      output$card_2_5_sites <- renderUI({card_2_5_sites_eng})
-      output$card_2_5_rand <- renderUI({card_2_5_rand_eng})
-      output$card_2_5_min_hrs <- renderUI({card_2_5_min_hrs_eng})
+      output$card_2_5_sites <- renderText({card_2_5_sites_eng})
+      output$card_2_5_rand <- renderText({card_2_5_rand_eng})
+      output$card_2_5_min_hrs <- renderText({card_2_5_min_hrs_eng})
       output$card_3_5 <- renderText({card_3_5_eng})
       output$card_3_5_check <- renderText({card_2_2_check_eng})
       output$card_3_5_run <- renderText({card_3_5_eng})
@@ -810,9 +818,9 @@ elpRApp <- function(){
 
       output$tab_6_pill_1 <- renderText({tab_6_pill_1_eng})
       output$card_1_6_1 <- renderText({card_1_6_1_eng})
-      output$card_1_6_1_instruction <- renderText({card_1_6_1_instruction_eng})
-      output$card_1_6_1_check <- renderText({card_2_2_check_eng})
-      output$card_1_6_1_rds <- renderUI({card_1_6_1_rds_eng})
+      output$card_1_6_1_path <- renderText({card_1_6_1_path_eng})
+      output$saved_plots_folder_recieved <- renderText({saved_plots_folder_recieved_eng()})
+      output$card_1_6_1_rds <- renderText({card_1_6_1_rds_eng})
       output$card_1_6_1_run <- renderText({card_1_6_1_run_eng})
       output$card_1_6_1_message <- renderText({card_1_6_1_message_eng})
       output$card_2_6_1_plot <- renderUI({card_2_6_1_plot_eng})
@@ -826,9 +834,9 @@ elpRApp <- function(){
 
       output$tab_6_pill_2 <- renderText({tab_6_pill_2_eng})
       output$card_1_6_2 <- renderText({card_1_6_1_eng})
-      output$card_1_6_2_instruction <- renderText({card_1_6_1_instruction_eng})
-      output$card_1_6_2_check <- renderText({card_2_2_check_eng})
-      output$card_1_6_2_sites <- renderUI({card_1_6_2_sites_eng})
+      output$card_1_6_2_path <- renderText({card_1_6_2_path_eng})
+      output$saved_tables_folder_recieved <- renderText({saved_tables_folder_recieved_eng()})
+      output$card_1_6_2_sites <- renderText({card_1_6_2_sites_eng})
       output$card_1_6_2_run <- renderText({card_1_6_2_run_eng})
       output$card_2_6_2_map <- renderUI({card_2_6_2_map_eng})
       output$card_2_6_2_map_input <- renderText({card_2_6_2_map_input_eng})
@@ -869,19 +877,21 @@ elpRApp <- function(){
       output$text_welcome <- renderUI({text_welcome_french})
       output$header_contributers <- renderUI({header_contributers_french})
       output$text_contributers <- renderUI({text_contributers_french})
-      output$text_link <- renderUI({text_link_french})
 
       output$card_1_1 <- renderText({card_1_1_french})
       output$card_1_1_dep_name <- renderText({card_1_1_dep_name_french})
       output$card_1_1_dep_num <- renderText({card_1_1_dep_num_french})
       output$card_1_1_disk_ID <- renderText({card_1_1_disk_ID_french})
       output$card_1_1_sites <- renderText({card_1_1_sites_french})
+      output$card_1_1_parent_dir <- renderText({card_1_1_parent_dir_french})
+      output$choose_a_folder <- renderText({choose_a_folder_french})
+      output$parent_dir_recieved <- renderText({card_1_1_dir_recieved_french()})
 
       output$card_1_2 <- renderText({card_1_2_french})
-      output$card_1_2_sound_path <- renderUI({card_1_2_sound_path_french})
-      output$card_1_2_file_dur <- renderUI({card_1_2_file_dur_french})
-      output$card_1_2_samp_rate <- renderUI({card_1_2_samp_rate_french})
-      output$card_1_2_file_ext <- renderUI({card_1_2_file_ext_french})
+      output$card_1_2_sound_path <- renderText({card_1_2_sound_path_french})
+      output$card_1_2_file_dur <- renderText({card_1_2_file_dur_french})
+      output$card_1_2_samp_rate <- renderText({card_1_2_samp_rate_french})
+      output$card_1_2_file_ext <- renderText({card_1_2_file_ext_french})
       output$card_2_2 <- renderText({card_2_2_french})
       output$card_2_2_check <- renderText({card_2_2_check_french})
       output$card_2_2_run <- renderText({card_2_2_run_french})
@@ -889,9 +899,9 @@ elpRApp <- function(){
       output$sound_path_recieved <- renderText({sound_path_recieved_french()})
 
       output$card_1_3 <- renderText({card_1_3_french})
-      output$card_1_3_path <- renderUI({card_1_3_path_french})
-      output$card_1_3_have_swift <- renderUI({card_1_3_have_swift_french})
-      output$card_1_3_merge_swift <- renderUI({card_1_3_merge_swift_french})
+      output$card_1_3_path <- renderText({card_1_3_path_french})
+      output$card_1_3_have_swift <- renderText({card_1_3_have_swift_french})
+      output$card_1_3_merge_swift <- renderText({card_1_3_merge_swift_french})
       output$card_2_3 <- renderText({card_2_3_french})
       output$card_2_3_check <- renderText({card_2_2_check_french})
       output$card_2_3_run <- renderText({card_2_3_french})
@@ -900,23 +910,23 @@ elpRApp <- function(){
 
       output$tab_4_pills <- renderText({tab_4_pills_french})
       output$card_1_4_1 <- renderText({card_1_4_1_french})
-      output$card_1_4_1_samp_rate <- renderUI({card_1_4_1_samp_rate_french})
-      output$card_1_4_1_rand <- renderUI({card_1_4_1_rand_french})
-      output$card_1_4_1_min_hrs <- renderUI({card_1_4_1_min_hrs_french})
-      output$card_1_4_1_col_name <- renderUI({card_1_4_1_col_name_french})
-      output$card_1_4_1_detect <- renderUI({card_1_4_1_detect_french})
-      output$card_1_4_1_detect_score <- renderUI({card_1_4_1_detect_score_french})
-      output$card_1_4_1_filt_score <- renderUI({card_1_4_1_filt_score_french})
+      output$card_1_4_1_samp_rate <- renderText({card_1_4_1_samp_rate_french})
+      output$card_1_4_1_rand <- renderText({card_1_4_1_rand_french})
+      output$card_1_4_1_min_hrs <- renderText({card_1_4_1_min_hrs_french})
+      output$card_1_4_1_col_name <- renderText({card_1_4_1_col_name_french})
+      output$card_1_4_1_detect <- renderText({card_1_4_1_detect_french})
+      output$card_1_4_1_detect_score <- renderText({card_1_4_1_detect_score_french})
+      output$card_1_4_1_filt_score <- renderText({card_1_4_1_filt_score_french})
       output$card_2_4_1 <- renderText({card_2_4_1_french})
       output$card_2_4_1_check <- renderText({card_2_2_check_french})
       output$card_2_4_1_run <- renderText({card_2_4_1_french})
       output$card_2_4_1_preview <- renderText({card_2_2_preview_french})
 
       output$card_1_4_2 <- renderText({card_1_4_2_french})
-      output$card_1_4_2_samp_rate <- renderUI({card_1_4_2_samp_rate_french})
-      output$card_1_4_2_detect <- renderUI({card_1_4_2_detect_french})
-      output$card_1_4_2_detect_score <- renderUI({card_1_4_2_detect_score_french})
-      output$card_1_4_2_filt_score <- renderUI({card_1_4_2_filt_score_french})
+      output$card_1_4_2_samp_rate <- renderText({card_1_4_2_samp_rate_french})
+      output$card_1_4_2_detect <- renderText({card_1_4_2_detect_french})
+      output$card_1_4_2_detect_score <- renderText({card_1_4_2_detect_score_french})
+      output$card_1_4_2_filt_score <- renderText({card_1_4_2_filt_score_french})
       output$card_2_4_2 <- renderText({card_2_4_2_french})
       output$card_2_4_2_check <- renderText({card_2_2_check_french})
       output$card_2_4_2_run <- renderText({card_2_4_2_french})
@@ -932,24 +942,25 @@ elpRApp <- function(){
       output$card_2_4_3_preview <- renderText({card_2_2_preview_french})
 
       output$card_1_5 <- renderText({card_1_5_french})
-      output$card_1_5_proj <- renderUI({card_1_5_proj_french})
-      output$card_1_5_dep_num <- renderUI({card_1_5_dep_num_french})
-      output$card_1_5_detect <- renderUI({card_1_5_detect_french})
-      output$card_1_5_out_path <- renderUI({card_1_5_out_path_french})
-      output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_french})
+      output$card_1_5_proj <- renderText({card_1_5_proj_french})
+      output$card_1_5_dep_num <- renderText({card_1_5_dep_num_french})
+      output$card_1_5_detect <- renderText({card_1_5_detect_french})
+      output$card_1_5_out_path <- renderText({card_1_5_out_path_french})
+      output$summary_folder_recieved <- renderText({summary_folder_recieved_french()})
+      output$card_1_5_tables_path <- renderText({card_1_5_tables_path_french})
       output$selection_tables_folder_recieved <- renderText({selection_tables_folder_recieved_french()})
-      output$card_1_5_zero_path <- renderUI({card_1_5_zero_path_french})
+      output$card_1_5_zero_path <- renderText({card_1_5_zero_path_french})
       output$zero_selection_tables_folder_recieved <- renderText({zero_selection_tables_folder_recieved_french()})
       output$card_2_5 <- renderText({card_2_5_french})
-      output$card_2_5_sound_include <- renderUI({card_2_5_sound_include_french})
-      output$card_2_5_sites_include <- renderUI({card_2_5_sites_include_french})
+      output$card_2_5_sound_include <- renderText({card_2_5_sound_include_french})
+      output$card_2_5_sites_include <- renderText({card_2_5_sites_include_french})
       if(input$sound_check_include_in == "Yes"){
-        output$card_2_5_sound_path <- renderUI({card_2_5_sound_path_french})
+        output$card_2_5_sound_path <- renderText({card_2_5_sound_path_french})
         output$sound_check_folder_recieved <- renderText({sound_check_folder_recieved_french()})
       }
-      output$card_2_5_sites <- renderUI({card_2_5_sites_french})
-      output$card_2_5_rand <- renderUI({card_2_5_rand_french})
-      output$card_2_5_min_hrs <- renderUI({card_2_5_min_hrs_french})
+      output$card_2_5_sites <- renderText({card_2_5_sites_french})
+      output$card_2_5_rand <- renderText({card_2_5_rand_french})
+      output$card_2_5_min_hrs <- renderText({card_2_5_min_hrs_french})
       output$card_3_5 <- renderText({card_3_5_french})
       output$card_3_5_check <- renderText({card_2_2_check_french})
       output$card_3_5_run <- renderText({card_3_5_french})
@@ -957,9 +968,9 @@ elpRApp <- function(){
 
       output$tab_6_pill_1 <- renderText({tab_6_pill_1_french})
       output$card_1_6_1 <- renderText({card_1_6_1_french})
-      output$card_1_6_1_instruction <- renderText({card_1_6_1_instruction_french})
-      output$card_1_6_1_check <- renderText({card_2_2_check_french})
-      output$card_1_6_1_rds <- renderUI({card_1_6_1_rds_french})
+      output$card_1_6_1_path <- renderText({card_1_6_1_path_french})
+      output$saved_plots_folder_recieved <- renderText({saved_plots_folder_recieved_french()})
+      output$card_1_6_1_rds <- renderText({card_1_6_1_rds_french})
       output$card_1_6_1_run <- renderText({card_1_6_1_run_french})
       output$card_1_6_1_message <- renderText({card_1_6_1_message_french})
       output$card_2_6_1_plot <- renderUI({card_2_6_1_plot_french})
@@ -973,9 +984,9 @@ elpRApp <- function(){
 
       output$tab_6_pill_2 <- renderText({tab_6_pill_2_french})
       output$card_1_6_2 <- renderText({card_1_6_1_french})
-      output$card_1_6_2_instruction <- renderText({card_1_6_1_instruction_french})
-      output$card_1_6_2_check <- renderText({card_2_2_check_french})
-      output$card_1_6_2_sites <- renderUI({card_1_6_2_sites_french})
+      output$card_1_6_2_path <- renderText({card_1_6_2_path_french})
+      output$saved_tables_folder_recieved <- renderText({saved_tables_folder_recieved_french()})
+      output$card_1_6_2_sites <- renderText({card_1_6_2_sites_french})
       output$card_1_6_2_run <- renderText({card_1_6_2_run_french})
       output$card_2_6_2_map <- renderUI({card_2_6_2_map_french})
       output$card_2_6_2_map_input <- renderText({card_2_6_2_map_input_french})
@@ -1027,7 +1038,6 @@ elpRApp <- function(){
       "<p><b>Bobbi Estabrook</b>: Author and Creator of the elpR R package.
       <br/><b>Jidapa Janpathompong</b>: Creator of the elpR app.</p>"
     )
-    text_link_eng <- "HELP"
 
     #French body
     header_welcome_french <- HTML("<h2>Bienvenue!</h2>")
@@ -1045,12 +1055,6 @@ elpRApp <- function(){
       "<p><b>Bobbi Estabrook</b>: Auteure et créatrice du package R elpR.
       <br/><b>Jidapa Janpathompong</b>: Créatrice de l’application elpR.</p>"
     )
-    text_link_french <- "AIDE"
-
-    #LINK: to HELP tab
-    observeEvent(input$link_to_HELP_page, {
-      updateTabsetPanel(session, "tabs", selected = "HELP_page")
-    })
 
     #______________________________________
     ##### definitions #####
@@ -1063,21 +1067,31 @@ elpRApp <- function(){
 
     #English & French translations
     card_1_1_eng <- "Input Basic Information"
-    card_1_1_dep_name_eng <- HTML("<p><b>INPUT 1:</b> Deployment name</p>")
-    card_1_1_dep_num_eng <- HTML("<p><b>INPUT 2:</b> Deployment number</p>")
-    card_1_1_disk_ID_eng <- HTML("<p><b>INPUT 3:</b> Disk ID</p>")
-    card_1_1_sites_eng <- HTML("<p><b>INPUT 4:</b> Sites .txt file</p>")
+    card_1_1_dep_name_eng <- "Deployment name: "
+    card_1_1_dep_num_eng <- "Deployment number: "
+    card_1_1_disk_ID_eng <- "Disk ID: "
+    card_1_1_sites_eng <- "Sites .txt file: "
+    card_1_1_parent_dir_eng <- "Choose the \"files_for_elpR\" folder: "
+    choose_a_folder_eng <- "Choose a folder"
 
     card_1_1_french <- "Saisir des informations de base"
-    card_1_1_dep_name_french <- HTML("<p><b>ENTRÉE 1:</b> Nom du déploiement</p>")
-    card_1_1_dep_num_french <- HTML("<p><b>ENTRÉE 2:</b> Numéro de déploiement</p>")
-    card_1_1_disk_ID_french <- HTML("<p><b>ENTRÉE 3:</b> ID de disque</p>")
-    card_1_1_sites_french <- HTML("<p><b>ENTRÉE 4:</b> Fichier .txt des sites</p>")
+    card_1_1_dep_name_french <- "Nom du déploiement: "
+    card_1_1_dep_num_french <- "Numéro de déploiement: "
+    card_1_1_disk_ID_french <- "ID de disque: "
+    card_1_1_sites_french <- "Fichier .txt des sites: "
+    card_1_1_parent_dir_french <- "Choisissez le dossier \"files_for_elpR\": "
+    choose_a_folder_french <- "Choisir un dossier"
+
+    #retrieve folder input path
+    shinyDirChoose(input, "parent_dir_in", roots = volumes)
+    card_1_1_dir_recieved_eng <- reactive({paste("Path recieved: ", parseDirPath(volumes, input$parent_dir_in))})
+    card_1_1_dir_recieved_french <- reactive({paste("Chemin reçu: ", parseDirPath(volumes, input$parent_dir_in))})
 
     #create list of user inputs
     inputs_basic_info <- reactive({
       list(
         sites = input$sites_in$datapath,
+        parent_dir = parseDirPath(volumes, input$parent_dir_in)
       )
     })
 
@@ -1086,20 +1100,20 @@ elpRApp <- function(){
 
     #English & French translations
     card_1_2_eng <- "Input Sound Check Information"
-    card_1_2_sound_path_eng <- HTML("<p><b>INPUT 1:</b> Choose folder containing sound files</p>")
-    card_1_2_file_dur_eng <- HTML("<p><b>INPUT 2:</b> File duration (minutes)</p>")
-    card_1_2_samp_rate_eng <- HTML("<p><b>INPUT 3:</b> Sample rate (Hz)</p>")
-    card_1_2_file_ext_eng <- HTML("<p><b>INPUT 4:</b> Sound file extention</p>")
+    card_1_2_sound_path_eng <- "Choose folder containing sound files: "
+    card_1_2_file_dur_eng <- "File duration (minutes): "
+    card_1_2_samp_rate_eng <- "Sample rate (Hz): "
+    card_1_2_file_ext_eng <- "Sound file extention: "
     card_2_2_eng <- "Run Sound Check"
     card_2_2_check_eng <- "Check Your Info" #also used on other tabs
     card_2_2_run_eng <- "Run Sound Check"
     card_2_2_preview_eng <- "Results preview: " #also used on other tabs
 
     card_1_2_french <- "Saisir les Informations Sound Check"
-    card_1_2_sound_path_french <- HTML("<p><b>ENTRÉE 1:</b> Choisissez le dossier contenant les fichiers audio</p>")
-    card_1_2_file_dur_french <- HTML("<p><b>ENTRÉE 2:</b> Durée du fichier (minutes)</p>")
-    card_1_2_samp_rate_french <- HTML("<p><b>ENTRÉE 3:</b> Sample rate (Hz)</p>")
-    card_1_2_file_ext_french <- HTML("<p><b>ENTRÉE 4:</b> Fréquence d'échantillonnage (Hz)</p>")
+    card_1_2_sound_path_french <- "Choisissez le dossier contenant les fichiers audio: "
+    card_1_2_file_dur_french <- "Durée du fichier (minutes): "
+    card_1_2_samp_rate_french <- "Sample rate (Hz): "
+    card_1_2_file_ext_french <- "Fréquence d'échantillonnage (Hz): "
     card_2_2_french <- "Exécuter Sound Check"
     card_2_2_check_french <- "Vérifie tes Informations"
     card_2_2_run_french <- "Exécuter Sound Check"
@@ -1128,15 +1142,18 @@ elpRApp <- function(){
       #validate if all fields have inputs
       validate(
         need(input$sites_in, "Please input a Sites txt file!"),
+        need(input$parent_dir_in, "Please input the \"files_for_elpR\" folder!"),
         need(input$sound_path_in, "Please input a folder with sound files!")
       )
 
       #create table
-      x = unlist(inputs_sound_check())
-      y = c(input$sites_in$name, x)
+      x = unlist(inputs_basic_info())
+      y = unlist(inputs_sound_check())
+      z = c(input$sites_in$name, x[2], y)
       data.frame(
         Fields = c(
           "Sites file",
+          "files_for_elpR",
           "Deployment name",
           "Deployment number",
           "Disk ID",
@@ -1145,7 +1162,7 @@ elpRApp <- function(){
           "Sample rate",
           "File extension"
         ),
-        Inputs = y
+        Inputs = z
       )
     }, hover = TRUE) |>
       bindEvent(input$check_sound_check_info_in)
@@ -1154,7 +1171,7 @@ elpRApp <- function(){
     observeEvent(input$run_sound_check_in, {
       result <- sound_check_function(
         x = parseDirPath(volumes, input$sound_path_in),
-        parent_dir = parent_dir_path,
+        parent_dir = parseDirPath(volumes, input$parent_dir_in),
         deployment_name = input$deployment_name_in,
         deployment_num = input$deployment_num_in,
         disk_ID = input$disk_ID_in,
@@ -1173,15 +1190,15 @@ elpRApp <- function(){
 
     #English & French translations
     card_1_3_eng <- "Input Exclude Files Information"
-    card_1_3_path_eng <- HTML("<p><b>INPUT 1:</b> Choose folder to output extra sounds</p>")
-    card_1_3_have_swift_eng <- HTML("<p><b>INPUT 2:</b> Do you have Swift files in the sounds folder?</p>")
-    card_1_3_merge_swift_eng <- HTML("<p><b>INPUT 3:</b> Do you want to merge the Swift files?</p>")
+    card_1_3_path_eng <- "Choose folder to output extra sounds: "
+    card_1_3_have_swift_eng <- "Do you have Swift files in the sounds folder?"
+    card_1_3_merge_swift_eng <- "Do you want to merge the Swift files?"
     card_2_3_eng <- "Run Exclude Files"
 
     card_1_3_french <- "Saisir les Informations Exclude Files"
-    card_1_3_path_french <- HTML("<p><b>ENTRÉE 1:</b> Choisissez le dossier de destination des sons supplémentaires</p>")
-    card_1_3_have_swift_french <- HTML("<p><b>ENTRÉE 2:</b> Avez-vous des fichiers Swift dans le dossier des sons?</p>")
-    card_1_3_merge_swift_french <- HTML("<p><b>ENTRÉE 3:</b> Souhaitez-vous fusionner les fichiers Swift?</p>")
+    card_1_3_path_french <- "Choisissez le dossier de destination des sons supplémentaires: "
+    card_1_3_have_swift_french <- "Avez-vous des fichiers Swift dans le dossier des sons?"
+    card_1_3_merge_swift_french <- "Souhaitez-vous fusionner les fichiers Swift?"
     card_2_3_french <- "Exécuter Exclude Files"
 
     #retrieve folder input path
@@ -1195,7 +1212,7 @@ elpRApp <- function(){
       if(input$have_swift_files_in == "Yes"){
         shinyjs::show("merge_swift_files_output")
         output$merge_swift_files_output <- renderUI({
-          add_info(radioButtons("merge_swift_files_in", label = uiOutput("card_1_3_merge_swift"),
+          add_info(radioButtons("merge_swift_files_in", label = textOutput("card_1_3_merge_swift"),
                        choices = list("Yes", "No"), selected = "No"), "merge_swift_files")
         })
       }
@@ -1222,6 +1239,7 @@ elpRApp <- function(){
     output$check_exclude_files_info_output <- renderTable({
       #validate if all fields have inputs
       validate(
+        need(input$parent_dir_in, "Please input the \"files_for_elpR\" folder!"),
         need(input$sound_path_in, "Please input a folder with sound files!"),
         need(input$extra_sounds_in, "Please input a folder to output extra sounds!")
       )
@@ -1229,9 +1247,10 @@ elpRApp <- function(){
       #create table
       x = unlist(inputs_sound_check())
       y = unlist(inputs_exclude_files())
-      z = c(x, y)
+      z = c(parseDirPath(volumes, input$parent_dir_in), x, y)
       data.frame(
         Fields = c(
+          "files_for_elpR",
           "Deployment name",
           "Deployment number",
           "Disk ID",
@@ -1263,7 +1282,7 @@ elpRApp <- function(){
       }
       result <- sound_exclude_function(
         sound_path = parseDirPath(volumes, input$sound_path_in),
-        parent_dir = parent_dir_path,
+        parent_dir = parseDirPath(volumes, input$parent_dir_in),
         extra_sounds_folder = parseDirPath(volumes, input$extra_sounds_in),
         deployment_name = input$deployment_name_in,
         deployment_num = input$deployment_num_in,
@@ -1285,24 +1304,24 @@ elpRApp <- function(){
     #English & French translations
     tab_4_pills_eng <- "Choose type of data: "
     card_1_4_1_eng <- "Input Rumble Detector Information"
-    card_1_4_1_samp_rate_eng <- HTML("<p><b>INPUT 1:</b> Sample rate</p>")
-    card_1_4_1_rand_eng <- HTML("<p><b>INPUT 2:</b> Do you want 3 random days per week?</p>")
-    card_1_4_1_min_hrs_eng <- HTML("<p><b>INPUT 3:</b> Does your project require a minimum of 23 hours per day?</p>")
-    card_1_4_1_col_name_eng <- HTML("<p><b>INPUT 4:</b> Score column name</p>")
-    card_1_4_1_detect_eng <- HTML("<p><b>INPUT 5:</b> Detector used</p>")
-    card_1_4_1_detect_score_eng <- HTML("<p><b>INPUT 6:</b> Detector score</p>")
-    card_1_4_1_filt_score_eng <- HTML("<p><b>INPUT 7:</b> Filter score</p>")
+    card_1_4_1_samp_rate_eng <- "Sample rate: "
+    card_1_4_1_rand_eng <- "Do you want 3 random days per week?"
+    card_1_4_1_min_hrs_eng <- "Does your project require a minimum of 23 hours per day?"
+    card_1_4_1_col_name_eng <- "Score column name: "
+    card_1_4_1_detect_eng <- "Detector used: "
+    card_1_4_1_detect_score_eng <- "Detector score: "
+    card_1_4_1_filt_score_eng <- "Filter score: "
     card_2_4_1_eng <- "Run Rumble Restructure"
 
     tab_4_pills_french <- "Choisissez le type de données: "
     card_1_4_1_french <- "Saisir les Informations Rumble Detector"
-    card_1_4_1_samp_rate_french <- HTML("<p><b>ENTRÉE 1:</b> Taux d'échantillonnage</p>")
-    card_1_4_1_rand_french <- HTML("<p><b>ENTRÉE 2:</b> Voulez-vous 3 jours aléatoires par semaine?</p>")
-    card_1_4_1_min_hrs_french <- HTML("<p><b>ENTRÉE 3:</b> Votre projet nécessite-t-il un minimum de 23 heures par jour?</p>")
-    card_1_4_1_col_name_french <- HTML("<p><b>ENTRÉE 4:</b> Nom de la colonne de score</p>")
-    card_1_4_1_detect_french <- HTML("<p><b>ENTRÉE 5:</b> Détecteur utilisé</p>")
-    card_1_4_1_detect_score_french <- HTML("<p><b>ENTRÉE 6:</b> Score du détecteur</p>")
-    card_1_4_1_filt_score_french <- HTML("<p><b>ENTRÉE 7:</b> Score de filtre</p>")
+    card_1_4_1_samp_rate_french <- "Taux d'échantillonnage: "
+    card_1_4_1_rand_french <- "Voulez-vous 3 jours aléatoires par semaine?"
+    card_1_4_1_min_hrs_french <- "Votre projet nécessite-t-il un minimum de 23 heures par jour?"
+    card_1_4_1_col_name_french <- "Nom de la colonne de score: "
+    card_1_4_1_detect_french <- "Détecteur utilisé: "
+    card_1_4_1_detect_score_french <- "Score du détecteur: "
+    card_1_4_1_filt_score_french <- "Score de filtre: "
     card_2_4_1_french <- "Exécuter Rumble Restructure"
 
     #create list of user inputs
@@ -1322,15 +1341,17 @@ elpRApp <- function(){
     output$check_restructure_info_output <- renderTable({
       #validate if all fields have inputs
       validate(
+        need(input$parent_dir_in, "Please input the \"files_for_elpR\" folder!"),
         need(input$sites_in, "Please input a Sites txt file!")
       )
 
       #create table
       x = unlist(inputs_sound_check())
       y = unlist(inputs_restructure())
-      z = c(x[1:3], input$sites_in$name, y)
+      z = c(parseDirPath(volumes, input$parent_dir_in), x[1:3], input$sites_in$name, y)
       data.frame(
-        Fields = c("Deployment name",
+        Fields = c("files_for_elpR",
+                   "Deployment name",
                    "Deployment number",
                    "Disk ID",
                    "Sites file",
@@ -1367,7 +1388,7 @@ elpRApp <- function(){
       }
 
       result <- restructure_rumble_function(
-        parent_dir = parent_dir_path,
+        parent_dir = parseDirPath(volumes, input$parent_dir_in),
         deployment_name = input$deployment_name_in,
         deployment_num = input$deployment_num_in,
         disk_ID = input$disk_ID_in,
@@ -1398,17 +1419,17 @@ elpRApp <- function(){
 
     #English & French translations
     card_1_4_2_eng <- "Input Gunshot Detector Information"
-    card_1_4_2_samp_rate_eng <- HTML("<p><b>INPUT 1:</b> Sample rate</p>")
-    card_1_4_2_detect_eng <- HTML("<p><b>INPUT 2:</b> Detector used</p>")
-    card_1_4_2_detect_score_eng <- HTML("<p><b>INPUT 3:</b> Detector score</p>")
-    card_1_4_2_filt_score_eng <- HTML("<p><b>INPUT 4:</b> Filter score</p>")
+    card_1_4_2_samp_rate_eng <- "Sample rate: "
+    card_1_4_2_detect_eng <- "Detector used: "
+    card_1_4_2_detect_score_eng <- "Detector score: "
+    card_1_4_2_filt_score_eng <- "Filter score: "
     card_2_4_2_eng <- "Run Gunshot Restructure"
 
     card_1_4_2_french <- "Saisir les Informations Gunshot Detector"
-    card_1_4_2_samp_rate_french <- HTML("<p><b>ENTRÉE 1:</b> Taux d'échantillonnage</p>")
-    card_1_4_2_detect_french <- HTML("<p><b>ENTRÉE 2:</b> Détecteur utilisé</p>")
-    card_1_4_2_detect_score_french <- HTML("<p><b>ENTRÉE 3:</b> Score du détecteur</p>")
-    card_1_4_2_filt_score_french <- HTML("<p><b>ENTRÉE 4:</b> Score de filtre</p>")
+    card_1_4_2_samp_rate_french <- "Taux d'échantillonnage: "
+    card_1_4_2_detect_french <- "Détecteur utilisé: "
+    card_1_4_2_detect_score_french <- "Score du détecteur: "
+    card_1_4_2_filt_score_french <- "Score de filtre: "
     card_2_4_2_french <- "Exécuter Gunshot Restructure"
 
     #create list of user inputs
@@ -1425,15 +1446,17 @@ elpRApp <- function(){
     output$check_gun_restructure_info_output <- renderTable({
       #validate if all fields have inputs
       validate(
+        need(input$parent_dir_in, "Please input the \"files_for_elpR\" folder!"),
         need(input$sites_in, "Please input a Sites txt file!")
       )
 
       #create table
       x = unlist(inputs_sound_check())
       y = unlist(inputs_gun_restructure())
-      z = c(x[1:3], input$sites_in$name, y)
+      z = c(parseDirPath(volumes, input$parent_dir_in), x[1:3], input$sites_in$name, y)
       data.frame(
-        Fields = c("Deployment name",
+        Fields = c("files_for_elpR",
+                   "Deployment name",
                    "Deployment number",
                    "Disk ID",
                    "Sites file",
@@ -1449,7 +1472,7 @@ elpRApp <- function(){
     #BUTTON: run gun restructure
     observeEvent(input$run_gun_restructure_in, {
       result <- restructure_gunshot_function(
-        parent_dir = parent_dir_path,
+        parent_dir = parseDirPath(volumes, input$parent_dir_in),
         deployment_name = input$deployment_name_in,
         deployment_num = input$deployment_num_in,
         disk_ID = input$disk_ID_in,
@@ -1473,14 +1496,14 @@ elpRApp <- function(){
 
     #English & French translations
     card_1_4_3_eng <- "Input General Information"
-    card_1_4_3_path_eng <- HTML("<p><b>INPUT 1:</b> Choose folder containing selection tables to merge</p>")
-    card_1_4_3_recur_eng <- radioButtons("recursive_in", label = HTML("<p><b>INPUT 2:</b> How are the selection tables organized?</p>"),
+    card_1_4_3_path_eng <- "Choose folder containing selection tables to merge: "
+    card_1_4_3_recur_eng <- radioButtons("recursive_in", label = "How are the selection tables organized?",
                                          choices = list("In one folder", "In multiple subfolders"))
     card_2_4_3_eng <- "Run General Restructure"
 
     card_1_4_3_french <- "Saisir les Informations General"
-    card_1_4_3_path_french <- HTML("<p><b>ENTRÉE 1:</b> Choisissez le dossier contenant les tables de sélection à fusionner</p>")
-    card_1_4_3_recur_french <- radioButtons("recursive_in", label = HTML("<p><b>ENTRÉE 2:</b> Comment les tableaux de sélection sont-ils organisés?</p>"),
+    card_1_4_3_path_french <- "Choisissez le dossier contenant les tables de sélection à fusionner: "
+    card_1_4_3_recur_french <- radioButtons("recursive_in", label = "Comment les tableaux de sélection sont-ils organisés?",
                                          choices = list("Dans un dossier", "Dans plusieurs sous-dossiers"))
     card_2_4_3_french <- "Exécuter General Restructure"
 
@@ -1536,36 +1559,42 @@ elpRApp <- function(){
 
     #English & French translations
     card_1_5_eng <- "Input Data Summaries Information"
-    card_1_5_proj_eng <- HTML("<p><b>INPUT 1:</b> Project name</p>")
-    card_1_5_dep_num_eng <- HTML("<p><b>INPUT 2:</b> Deployment number(s)</p>")
-    card_1_5_detect_eng <- HTML("<p><b>INPUT 3:</b> Detector used</p>")
-    card_1_5_tables_path_eng <- HTML("<p><b>INPUT 5:</b> Choose folder containing selection tables</p>")
-    card_1_5_zero_path_eng <- HTML("<p><b>INPUT 6:</b> Choose folder containing zero-day selection tables</p>")
+    card_1_5_proj_eng <- "Project name: "
+    card_1_5_dep_num_eng <- "Deployment number(s): "
+    card_1_5_detect_eng <- "Detector used: "
+    card_1_5_out_path_eng <- "Choose folder to output data summaries: "
+    card_1_5_tables_path_eng <- "Choose folder containing selection tables: "
+    card_1_5_zero_path_eng <- "Choose folder containing zero-day selection tables: "
     card_2_5_eng <- "Input OPTIONAL Data Summaries Information"
-    card_2_5_sound_include_eng <- HTML("<p><b>INPUT 7:</b> Do you want to include a sound check file?</p>")
-    card_2_5_sound_path_eng <- HTML("<p><b>INPUT 11:</b> Choose folder containing sound check files</p>")
-    card_2_5_sites_include_eng <- HTML("<p><b>INPUT 8:</b> Do you only want to include sites listed in a sites file?</p>")
-    card_2_5_sites_eng <- HTML("<p><b>INPUT 12:</b> Sites .txt file with latitude and longitude</p>")
-    card_2_5_rand_eng <- HTML("<p><b>INPUT 9:</b> Do you need random dates?</p>")
-    card_2_5_min_hrs_eng <- HTML("<p><b>INPUT 10:</b> Do you want to exclude sounds <23 hours?</p>")
+    card_2_5_sound_include_eng <- "Do you want to include a sound check file?"
+    card_2_5_sound_path_eng <- "Choose folder containing sound check files: "
+    card_2_5_sites_include_eng <- "Do you only want to include sites listed in a sites file?"
+    card_2_5_sites_eng <- "Sites .txt file with latitude and longitude: "
+    card_2_5_rand_eng <- "Do you need random dates?"
+    card_2_5_min_hrs_eng <- "Do you want to exclude sounds <23 hours?"
     card_3_5_eng <- "Run Data Summaries"
 
     card_1_5_french <- "Saisir les Informations Data Summaries"
-    card_1_5_proj_french <- HTML("<p><b>ENTRÉE 1:</b> Nom du projet</p>")
-    card_1_5_dep_num_french <- HTML("<p><b>ENTRÉE 2:</b> Numéro(s) de déploiement</p>")
-    card_1_5_detect_french <- HTML("<p><b>ENTRÉE 3:</b> Détecteur utilisé</p>")
-    card_1_5_tables_path_french <- HTML("<p><b>ENTRÉE 5:</b> Choisissez le dossier contenant les tables de sélection</p>")
-    card_1_5_zero_path_french <- HTML("<p><b>ENTRÉE 6:</b> Choisissez le dossier contenant les tables de sélection zero-day</p>")
+    card_1_5_proj_french <- "Nom du projet: "
+    card_1_5_dep_num_french <- "Numéro(s) de déploiement: "
+    card_1_5_detect_french <- "Détecteur utilisé: "
+    card_1_5_out_path_french <- "Choisissez le dossier de destination des résumés de données: "
+    card_1_5_tables_path_french <- "Choisissez le dossier contenant les tables de sélection: "
+    card_1_5_zero_path_french <- "Choisissez le dossier contenant les tables de sélection zero-day: "
     card_2_5_french <- "Saisir les informations facultatives Data Summaries"
-    card_2_5_sound_include_french <- HTML("<p><b>ENTRÉE 7:</b> Souhaitez-vous inclure un fichier de Sound Check?</p>")
-    card_2_5_sound_path_french <- HTML("<p><b>ENTRÉE 11:</b> Choisissez le dossier contenant les fichiers de Sound Check</p>")
-    card_2_5_sites_include_french <- HTML("<p><b>ENTRÉE 8:</b> Souhaitez-vous inclure uniquement les sites répertoriés dans un fichier de sites?</p>")
-    card_2_5_sites_french <- HTML("<p><b>ENTRÉE 12:</b> Fichier .txt des sites contenant la latitude et la longitude</p>")
-    card_2_5_rand_french <- HTML("<p><b>ENTRÉE 9:</b> Avez-vous besoin de dates aléatoires?</p>")
-    card_2_5_min_hrs_french <- HTML("<p><b>ENTRÉE 10:</b> Souhaitez-vous exclure les sons de moins de 23 heures?</p>")
+    card_2_5_sound_include_french <- "Souhaitez-vous inclure un fichier de Sound Check?"
+    card_2_5_sound_path_french <- "Choisissez le dossier contenant les fichiers de Sound Check: "
+    card_2_5_sites_include_french <- "Souhaitez-vous inclure uniquement les sites répertoriés dans un fichier de sites?"
+    card_2_5_sites_french <- "Fichier .txt des sites contenant la latitude et la longitude: "
+    card_2_5_rand_french <- "Avez-vous besoin de dates aléatoires?"
+    card_2_5_min_hrs_french <- "Souhaitez-vous exclure les sons de moins de 23 heures?"
     card_3_5_french <- "Exécuter Data Summaries"
 
     #retrieve folder input paths
+    shinyDirChoose(input, "summary_folder_in", roots = volumes)
+    summary_folder_recieved_eng <- reactive({paste("Path recieved: ", parseDirPath(volumes, input$summary_folder_in))})
+    summary_folder_recieved_french <- reactive({paste("Chemin reçu: ", parseDirPath(volumes, input$summary_folder_in))})
+
     shinyDirChoose(input, "selection_tables_folder_in", roots = volumes)
     selection_tables_folder_recieved_eng <- reactive({paste("Path recieved: ", parseDirPath(volumes, input$selection_tables_folder_in))})
     selection_tables_folder_recieved_french <- reactive({paste("Chemin reçu: ", parseDirPath(volumes, input$selection_tables_folder_in))})
@@ -1599,7 +1628,7 @@ elpRApp <- function(){
       if(input$use_only_sites_provided_in == "Yes"){
         shinyjs::show("use_only_sites_provided_output")
         output$use_only_sites_provided_output <- renderUI({
-          add_info(fileInput("sites_lat_long_in", label = uiOutput("card_2_5_sites")), "site_late_long")
+          add_info(fileInput("sites_lat_long_in", label = textOutput("card_2_5_sites")), "site_late_long")
         })
       } else{
         shinyjs::hide("use_only_sites_provided_output")
@@ -1623,6 +1652,7 @@ elpRApp <- function(){
         project_name = input$project_name_in,
         deployment_num = input$deployment_nums_in,
         detector_name = input$summary_detector_in,
+        output = parseDirPath(volumes, input$summary_folder_in),
         ele_tables = parseDirPath(volumes, input$selection_tables_folder_in),
         zero_txt = parseDirPath(volumes, input$zero_selection_tables_folder_in),
         sound_check_include = input$sound_check_include_in,
@@ -1638,6 +1668,8 @@ elpRApp <- function(){
     output$check_summary_info_output <- renderTable({
       #validate if all fields have inputs
       validate(
+        need(input$parent_dir_in, "Please input the \"files_for_elpR\" folder!"),
+        need(input$summary_folder_in, "Please input a folder to output data summaries!"),
         need(input$selection_tables_folder_in, "Please input a folder containing selection tables!"),
         need(input$zero_selection_tables_folder_in, "Please input a folder containing zero-day selection tables!"),
         if(input$sound_check_include_in == "Yes"){
@@ -1650,10 +1682,13 @@ elpRApp <- function(){
 
       #create table
       x = unlist(inputs_summary())
+      y = c(parseDirPath(volumes, input$parent_dir_in), x)
       data.frame(
-        Fields = c("Project name",
+        Fields = c("files_for_elpR",
+                   "Project name",
                    "Deployment number(s)",
                    "Detector used",
+                   "Folder to output summaries",
                    "Folder containing selection tables",
                    "Folder containing zero-day selection tables",
                    "Use sound check files",
@@ -1662,7 +1697,7 @@ elpRApp <- function(){
                    "Sites file with latitude and longitude",
                    "Random dates needed",
                    "Exclude sounds <23 hours"),
-        Inputs = x
+        Inputs = y
       )
     }, hover = TRUE) |>
       bindEvent(input$check_summary_info_in)
@@ -1695,10 +1730,11 @@ elpRApp <- function(){
       }
 
       result <- data_summaries_function(
-        parent_dir = parent_dir_path,
+        parent_dir = parseDirPath(volumes, input$parent_dir_in),
         project_name = input$project_name_in,
         deployment_num = input$deployment_nums_in,
         detector_name = input$summary_detector_in,
+        output = parseDirPath(volumes, input$summary_folder_in),
         ele_tables = parseDirPath(volumes, input$selection_tables_folder_in),
         zero_txt = parseDirPath(volumes, input$zero_selection_tables_folder_in),
         sound_check_include = sound_check_include_value,
@@ -1721,7 +1757,8 @@ elpRApp <- function(){
     #English & French translations
     tab_6_pill_1_eng <- "Plots"
     card_1_6_1_eng <- "Input File Information"
-    card_1_6_1_instruction_eng <- "Input project name, deployment number(s), and detector from Data Summaries."
+    card_1_6_1_path_eng <- "Choose folder containing .Rds file with saved plots: "
+    card_1_6_1_rds_eng <- "Name of .Rds file: "
     card_1_6_1_run_eng <- "Load Plots"
     card_1_6_1_message_eng <- "Loading plots..."
     card_2_6_1_plot_eng <- HTML("<p><b>Plot Options</b></p>")
@@ -1735,7 +1772,8 @@ elpRApp <- function(){
 
     tab_6_pill_1_french <- "Graphiques"
     card_1_6_1_french <- "Informations sur le fichier d'entrée"
-    card_1_6_1_instruction_french <- "Saisissez le nom du projet, le(s) numéro(s) de déploiement et le détecteur à partir des Data Summaries."
+    card_1_6_1_path_french <- "Choisissez le dossier contenant le fichier .Rds: "
+    card_1_6_1_rds_french <- "Nom du fichier .Rds: "
     card_1_6_1_run_french <- "Charger des Graphiques"
     card_1_6_1_message_french <- "Chargement des graphiques..."
     card_2_6_1_plot_french <- HTML("<p><b>Options de Graphique</b></p>")
@@ -1747,31 +1785,23 @@ elpRApp <- function(){
     card_2_6_1_format_french <- "Format de fichier à télécharger: "
     card_2_6_1_save_french <- "Télécharger"
 
-    #BUTTON: check plots info
-    output$check_plots_info_output <- renderTable({
-      #create table
-      x = unlist(inputs_summary())
-      y = x[1:3]
-      data.frame(
-        Fields = c("Project name",
-                   "Deployment number(s)",
-                   "Detector used"),
-        Inputs = y
-      )
-    }, hover = TRUE) |>
-      bindEvent(input$check_plots_info_in)
+    #retrieve folder input path
+    shinyDirChoose(input, "saved_plots_folder_in", roots = volumes)
+    saved_plots_folder_recieved_eng <- reactive({paste("Path recieved: ", parseDirPath(volumes, input$saved_plots_folder_in))})
+    saved_plots_folder_recieved_french <- reactive({paste("Chemin reçu: ", parseDirPath(volumes, input$saved_plots_folder_in))})
 
-    #BUTTON: load plots from data summaries
+    #load plots from data summaries
     saved_plots <- reactiveVal({})
     observeEvent(input$load_plots, {
+      #validate if plots have been loaded
+      #although nothing actually shows in the UI :(
+      validate(
+        need(input$saved_plots_folder_in, "Please input a path to your .Rds file!")
+      )
+
       #load plots into environment from user inputted file path
       saved_plots(
-        readRDS(paste0(parent_dir_path,
-                       "/data_summaries/summary_plots/",
-                       input$project_name_in,
-                       "_dep",input$deployment_nums_in,
-                       "_",input$summary_detector_in,
-                       "_saved_plots.Rds"))
+        readRDS(paste(parseDirPath(volumes, input$saved_plots_folder_in), "/", input$saved_plots_file_in, sep = ""))
       )
 
       #display drop-down menu for choosing plots
@@ -2019,7 +2049,8 @@ elpRApp <- function(){
 
     #English & French translations
     tab_6_pill_2_eng <- "Maps"
-    card_1_6_2_sites_eng <- HTML("<p>Sites .txt file</p>")
+    card_1_6_2_path_eng <- "Choose folder containing data summary tables: "
+    card_1_6_2_sites_eng <- "Sites .txt file: "
     card_1_6_2_run_eng <- "Load Tables"
     card_2_6_2_map_eng <- HTML("<p><b>Map Options</b></p>")
     card_2_6_2_map_input_eng <- "Map average daily rumbles by: "
@@ -2027,44 +2058,140 @@ elpRApp <- function(){
     card_2_6_2_month_eng <- "View month: "
 
     tab_6_pill_2_french <- "Cartes"
-    card_1_6_2_sites_french <- HTML("<p>Fichier .txt des sites</p>")
+    card_1_6_2_path_french <- "Choisissez le dossier contenant les tables data summaries: "
+    card_1_6_2_sites_french <- "Fichier .txt des sites: "
     card_1_6_2_run_french <- "Charger les Tableaux"
     card_2_6_2_map_french <- HTML("<p><b>Options de Carte</b></p>")
     card_2_6_2_map_input_french <- "Carte moyenne quotidienne rumbles par"
     card_2_6_2_year_french <- "Voir l'année: "
     card_2_6_2_month_french <- "Afficher le mois: "
 
-    #BUTTON: check maps info
-    output$check_maps_info_output <- renderTable({
-      #validate if all fields have inputs
-      validate(
-        need(input$site_lat_long_map, "Please input a Sites txt file!"),
-      )
+    #retrieve folder input path
+    shinyDirChoose(input, "saved_tables_folder_in", roots = volumes)
+    saved_tables_folder_recieved_eng <- reactive({paste("Path recieved: ", parseDirPath(volumes, input$saved_tables_folder_in))})
+    saved_tables_folder_recieved_french <- reactive({paste("Chemin reçu: ", parseDirPath(volumes, input$saved_tables_folder_in))})
 
-      #create table
-      x = unlist(inputs_summary())
-      y = c(x[1:3], input$site_lat_long_map$name)
-      data.frame(
-        Fields = c("Project name",
-                   "Deployment number(s)",
-                   "Detector used",
-                   "Sites file with latitude and longitude"),
-        Inputs = y
-      )
-    }, hover = TRUE) |>
-      bindEvent(input$check_maps_info_in)
-
-    #BUTTON: load maps from data summaries
-    maps_function_output <- reactiveVal(list())
+    #load plots from data summaries
+    tables_for_mapping <- reactiveVal(list())
     observeEvent(input$load_tables, {
-
-      #run maps_function
-      result <- maps_function(
-        folder_path = paste0(parent_dir_path,
-                             "/data_summaries/summary_tables/"),
-        site_lat_long = input$site_lat_long_map$datapath
+      #validate if tables have been loaded
+      #although nothing actually shows in the UI :(
+      validate(
+        need(input$saved_tables_folder_in, "Please input a path to your summary tables!")
       )
-      maps_function_output(result)
+
+      #load tables into environment from user inputted file path
+      ele_weekly <- read_tsv(
+        paste(
+          parseDirPath(volumes, input$saved_tables_folder_in),
+          "/",
+          list.files(path = parseDirPath(volumes, input$saved_tables_folder_in), pattern = "Rumbles_Site_Weekly_Summaries.txt"),
+          sep = ""),
+        col_names = TRUE)
+      ele_monthly_site <- read_tsv(
+        paste(
+          parseDirPath(volumes, input$saved_tables_folder_in),
+          "/",
+          list.files(path = parseDirPath(volumes, input$saved_tables_folder_in), pattern = "Rumbles_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Site.txt"),
+          sep = ""),
+        col_names = TRUE)
+      site_lat_long_map <- read_tsv(
+        input$site_lat_long_map$datapath,
+        col_names = TRUE)
+
+      #configure tables for mapping
+      tables_for_mapping(NULL)
+      temp_list <- tables_for_mapping()
+      if("Vegetation Class" %in% names(ele_weekly) &&
+         "Strata" %in% names(ele_weekly)){
+        #avg daily rumbles for "Strata" & "Vegetation Class"
+        temp_list <- c(
+          temp_list,
+          list(
+            ele_site_avg =
+              ele_weekly %>%
+              group_by(Site) %>%
+              summarize(
+                "Latitude" = round(first(Latitude),5),
+                "Longitude" = round(first(Longitude),5),
+                "Avg Rumbles" = sum(sumRumbles)/sum(n),
+                "Strata" = first(Strata),
+                "Vegetation Class" = first(`Vegetation Class`)
+              )
+          )
+        )
+      } else if("Strata" %in% names(ele_weekly)){
+        #avg daily rumbles for "Strata"
+        temp_list <- c(
+          temp_list,
+          list(
+            ele_site_avg =
+              ele_weekly %>%
+              group_by(Site) %>%
+              summarize(
+                "Latitude" = round(first(Latitude),5),
+                "Longitude" = round(first(Longitude),5),
+                "Avg Rumbles" = sum(sumRumbles)/sum(n),
+                "Strata" = first(Strata)
+              )
+          )
+        )
+      } else if("Vegetation Class" %in% names(ele_weekly)){
+        #avg daily rumbles for "Vegetation Class"
+        temp_list <- c(
+          temp_list,
+          list(
+            ele_site_avg =
+              ele_weekly %>%
+              group_by(Site) %>%
+              summarize(
+                "Latitude" = round(first(Latitude),5),
+                "Longitude" = round(first(Longitude),5),
+                "Avg Rumbles" = sum(sumRumbles)/sum(n),
+                "Vegetation Class" = first(`Vegetation Class`)
+              )
+          )
+        )
+      } else{
+        #avg daily rumbles with NO "Strata" NOR "Vegetation Class"
+        temp_list <- c(
+          temp_list,
+          list(
+            ele_site_avg =
+              ele_weekly %>%
+              group_by(Site) %>%
+              summarize(
+                "Latitude" = round(first(Latitude),5),
+                "Longitude" = round(first(Longitude),5),
+                "Avg Rumbles" = sum(sumRumbles)/sum(n)
+              )
+          )
+        )
+      }
+
+      temp_list <- c(
+        temp_list,
+        list(
+          #avg daily rumbles for "Year"
+          ele_year_avg =
+            ele_monthly_site %>%
+            group_by(Site, Year) %>%
+            summarize(
+              "Avg Rumbles" = sum(sumRumbles)/sum(n)
+            ) %>%
+            merge(site_lat_long_map, by = "Site"),
+
+          #avg daily rumbles for "Month"
+          ele_month_avg =
+            ele_monthly_site %>%
+            group_by(Site, Month) %>%
+            summarize(
+              "Avg Rumbles" = sum(sumRumbles)/sum(n)
+            ) %>%
+            merge(site_lat_long_map, by = "Site")
+        )
+      )
+      tables_for_mapping(temp_list)
 
       #display drop-down menu for choosing maps
       removeUI(selector = "#map_input_div", multiple = TRUE, immediate = TRUE)
@@ -2094,10 +2221,10 @@ elpRApp <- function(){
       #display drop-down menus
       if(input$map_input == "Year"){
 
-        req(maps_function_output())
-        req(maps_function_output()$ele_year_avg)
+        req(tables_for_mapping())
+        req(tables_for_mapping()$ele_year_avg)
 
-        ele_year_avg <- maps_function_output()$ele_year_avg
+        ele_year_avg <- tables_for_mapping()$ele_year_avg
         years_vector <- sort(unique(ele_year_avg$Year))
 
         insertUI(
@@ -2112,10 +2239,10 @@ elpRApp <- function(){
       }
       if(input$map_input == "Month"){
 
-        req(maps_function_output())
-        req(maps_function_output()$ele_month_avg)
+        req(tables_for_mapping())
+        req(tables_for_mapping()$ele_month_avg)
 
-        ele_month_avg <- maps_function_output()$ele_month_avg
+        ele_month_avg <- tables_for_mapping()$ele_month_avg
         months_vector <- sort(unique(ele_month_avg$Month))
 
         insertUI(
@@ -2132,28 +2259,141 @@ elpRApp <- function(){
 
     #select maps based on drop-down menu selections
     display_this_map <- reactive({
-      ele_site_avg <- maps_function_output()$ele_site_avg
+      #create default map with ele_site_avg
+      ele_site_avg <- tables_for_mapping()$ele_site_avg
+      m <- leaflet(ele_site_avg) %>%
+
+        #Add default base map
+        addProviderTiles(provider = providers$Esri.WorldTopoMap,
+                         group = "map") %>%
+
+        #Set center point and zoom level
+        setView(lng = mean(ele_site_avg$Longitude),
+                lat = mean(ele_site_avg$Latitude),
+                zoom = 10)
+
       #choose map to display based on user's drop-down selections
       if(input$map_input == "Default"){
-        maps_function_output()$default_map
+        ele_site_avg <- tables_for_mapping()$ele_site_avg
+        m <- m %>%
+
+          #Add markers
+          addCircleMarkers(
+            lng = ~Longitude,
+            lat = ~Latitude,
+            radius = ~sqrt(`Avg Rumbles`) * 10,  # Adjust the multiplier to change circle sizes
+            popup = ~paste("Site:", Site, "<br>Avg Rumbles:", `Avg Rumbles`),
+            fillOpacity = 0.7
+          )
+
+        #View map
+        m
       } else if(input$map_input == "Strata"){
+        ele_site_avg <- tables_for_mapping()$ele_site_avg
         if(!is.null(ele_site_avg$Strata)){
-          maps_function_output()$strata_map
+          color_by_strata <- colorFactor(palette = "viridis",
+                                         domain = unique(ele_site_avg$Strata))
+          m <- m %>%
+
+            #Add legend
+            addLegend(
+              position = "bottomright",
+              pal = color_by_strata,
+              values = ~Strata,
+              title = "Strata"
+            ) %>%
+
+            #Add layers control
+            addLayersControl(overlayGroups = unique(ele_site_avg$Strata),
+                             position = "topleft")
+
+          #Add markers
+          for(strata in unique(ele_site_avg$Strata)){
+            subset_data <- ele_site_avg %>%
+              filter(Strata == strata)
+
+            m <- m %>%
+              addCircleMarkers(
+                data = subset_data,
+                lng = ~Longitude,
+                lat = ~Latitude,
+                radius = ~sqrt(`Avg Rumbles`) * 10,  # Adjust the multiplier to change circle sizes
+                popup = ~paste("Site:", Site, "<br>Avg Rumbles:", `Avg Rumbles`),
+                color = ~color_by_strata(Strata),
+                fillOpacity = 0.7,
+                group = paste(strata)
+              )
+          }
+
+          #View map
+          m
         } else{
           NULL
         }
       } else if(input$map_input == "Vegetation Class"){
+        ele_site_avg <- tables_for_mapping()$ele_site_avg
         if(!is.null(ele_site_avg$`Vegetation Class`)){
-          maps_function_output()$veg_map
+          color_by_veg <- colorFactor(palette = "plasma",
+                                      domain = unique(ele_site_avg$`Vegetation Class`))
+          m <- m %>%
+
+            #Add legend
+            addLegend(
+              position = "bottomright",
+              pal = color_by_veg,
+              values = ~`Vegetation Class`,
+              title = "Vegetation Class"
+            ) %>%
+
+            #Add layers control
+            addLayersControl(overlayGroups = unique(ele_site_avg$`Vegetation Class`),
+                             position = "topleft")
+
+          #Add markers
+          for(veg in unique(ele_site_avg$`Vegetation Class`)){
+            subset_data <- ele_site_avg %>%
+              filter(`Vegetation Class` == veg)
+
+            m <- m %>%
+              addCircleMarkers(
+                data = subset_data,
+                lng = ~Longitude,
+                lat = ~Latitude,
+                radius = ~sqrt(`Avg Rumbles`) * 10,  # Adjust the multiplier to change circle sizes
+                popup = ~paste("Site:", Site, "<br>Avg Rumbles:", `Avg Rumbles`),
+                color = ~color_by_veg(`Vegetation Class`),
+                fillOpacity = 0.7,
+                group = paste(veg)
+              )
+          }
+
+          #View map
+          m
         } else{
           NULL
         }
       } else if(input$map_input == "Year"){
-        ele_year_avg <- maps_function_output()$ele_year_avg
+        ele_year_avg <- tables_for_mapping()$ele_year_avg
         color_by_rumbles <- colorNumeric(palette = "viridis",
                                          domain = range(ele_year_avg$`Avg Rumbles`))
+        m <- leaflet(ele_year_avg) %>%
 
-        year_map <- maps_function_output()$year_map %>%
+          #Add default base map
+          addProviderTiles(provider = providers$Esri.WorldTopoMap,
+                           group = "map") %>%
+
+          #Set center point and zoom level
+          setView(lng = mean(ele_year_avg$Longitude),
+                  lat = mean(ele_year_avg$Latitude),
+                  zoom = 10) %>%
+
+          #Add legend
+          addLegend(
+            position = "bottomright",
+            pal = color_by_rumbles,
+            values = ~`Avg Rumbles`,
+            title = "Avg Daily Rumbles"
+          ) %>%
 
           #Add markers
           addCircleMarkers(
@@ -2168,13 +2408,30 @@ elpRApp <- function(){
             group = paste(input$year_slider_input)
           )
 
-        year_map
+        #View map
+        m
       } else if(input$map_input == "Month"){
-        ele_month_avg <- maps_function_output()$ele_month_avg
+        ele_month_avg <- tables_for_mapping()$ele_month_avg
         color_by_rumbles <- colorNumeric(palette = "viridis",
                                          domain = range(ele_month_avg$`Avg Rumbles`))
+        m <- leaflet(ele_month_avg) %>%
 
-        month_map <- maps_function_output()$month_map %>%
+          #Add default base map
+          addProviderTiles(provider = providers$Esri.WorldTopoMap,
+                           group = "map") %>%
+
+          #Set center point and zoom level
+          setView(lng = mean(ele_month_avg$Longitude),
+                  lat = mean(ele_month_avg$Latitude),
+                  zoom = 10) %>%
+
+          #Add legend
+          addLegend(
+            position = "bottomright",
+            pal = color_by_rumbles,
+            values = ~`Avg Rumbles`,
+            title = "Avg Daily Rumbles"
+          ) %>%
 
           #Add markers
           addCircleMarkers(
@@ -2190,7 +2447,8 @@ elpRApp <- function(){
             group = paste(input$month_slider_input)
           )
 
-        month_map
+        #View map
+        m
       }
     })
 
@@ -2235,22 +2493,22 @@ elpRApp <- function(){
         paste(map_file_name(), ".png", sep = "")
       },
       content = function(file){
-        mapshot2(display_this_map(), file = file, remove_controls = c("layersControl"), vwidth = 700, vheight = 500)
+        mapshot(display_this_map(), file = file, remove_controls = c("layersControl"), vwidth = 700, vheight = 500)
       }
     )
 
     #select data tables to display based on drop-down menu selections
     display_this_df <- reactive({
       if(input$map_input == "Default"){
-        maps_function_output()$ele_site_avg
+        tables_for_mapping()$ele_site_avg
       } else if(input$map_input == "Strata"){
-        maps_function_output()$ele_site_avg
+        tables_for_mapping()$ele_site_avg
       } else if(input$map_input == "Vegetation Class"){
-        maps_function_output()$ele_site_avg
+        tables_for_mapping()$ele_site_avg
       } else if(input$map_input == "Year"){
-        maps_function_output()$ele_year_avg
+        tables_for_mapping()$ele_year_avg
       } else if(input$map_input == "Month"){
-        maps_function_output()$ele_month_avg
+        tables_for_mapping()$ele_month_avg
       }
     })
 
@@ -2298,8 +2556,8 @@ elpRApp <- function(){
       htmlOutput("plots_documentation_eng"))})
     help_maps_eng <- reactive({accordion_panel(
       "What does \"Results!\" for Maps do?",
-      downloadButton("download_maps_help", label = NULL),
-      htmlOutput("maps_documentation"))})
+      downloadButton("download_maps_help_eng", label = NULL),
+      htmlOutput("maps_documentation_eng"))})
 
     help_sound_french <- reactive({accordion_panel(
       "Que fait \"Sound Check\"?",
@@ -2331,8 +2589,8 @@ elpRApp <- function(){
       htmlOutput("plots_documentation_french"))})
     help_maps_french <- reactive({accordion_panel(
       "Que fait \"Résultats!\" pour Cartes?",
-      downloadButton("download_maps_help", label = NULL),
-      htmlOutput("maps_documentation"))})
+      downloadButton("download_maps_help_french", label = NULL),
+      htmlOutput("maps_documentation_french"))})
 
     #sound_check_documentation
     sound_check_help <- reactive({
@@ -2474,13 +2732,12 @@ elpRApp <- function(){
         "<h2>Plot Results</h2>
         <h3>Description</h3>
         <p>This page displays the plots generated by the Data Summaries function.
-        The .rds file generated from the Data Summaries function should be in /data_summaries/summary_plots.
-        After loading the data, use the options on the sidebar to view and download the plots.</p>
+        First, select the folder containing your Data Summaries output, and load in the data.
+        Next, use the options on the sidebar to view and download the plots.</p>
         <h3>Inputs</h3>
-        <ul><li>Project name, deployment number(s), and detector name from Data Summaries
-        (see project_name, deployment_num, and detector_name arguments in \"What does \'Data Summaries\' do?</li></ul>
+        <ul><li>Folder containing the .rds file generated by the Data Summaries function.</li></ul>
         <h3>Outputs</h3>
-        <ul><li>Plots in the .rds file generated by the Data Summaries function
+        <ul><li>Plots in the .rds file generated by the Data Summaries function.
         (See \"What does \'Data Summaries\' do?\" for more details.)</li></ul>
         <h3>Author(s)</h3>
         <p>Jidapa Janpathompong</p>")
@@ -2488,13 +2745,12 @@ elpRApp <- function(){
         "<h2>Résultats du Graphique</h2>
         <h3>Description</h3>
         <p>Cette page affiche les graphiques générés par la fonction Data Summaries.
-        Le fichier .rds généré par la fonction Data Summaries devrait se trouver dans /data_summaries/summary_plots.
+        Tout d'abord, sélectionnez le dossier contenant les données générées par la fonction Data Summaries, puis chargez-y les données.
         Ensuite, utilisez les options de la barre latérale pour visualiser et télécharger les graphiques.</p>
         <h3>Entrées</h3>
-        <ul><li>Nom du projet, numéro(s) de déploiement et nom du détecteur à partir des Data Summaries
-        (voir les arguments project_name, deployment_num et detector_name dans \"Que fait \'Data Summaries\'?\"</li></ul>
+        <ul><li>Dossier contenant le fichier .rds généré par la fonction Data Summaries.</li></ul>
         <h3>Sorties</h3>
-        <ul><li>Graphiques du fichier .rds généré par la fonction Data Summaries
+        <ul><li>Graphiques du fichier .rds généré par la fonction Data Summaries.
         (Pour plus de détails, consultez la section \"Que fait \'Data Summaries\'?\")</li></ul>
         <h3>Auteurs</h3>
 
@@ -2533,99 +2789,77 @@ elpRApp <- function(){
 
     #maps_documentation
     maps_help <- reactive({
-      rd = system.file("man", "maps_function.Rd", package = "elpR2")
-      temp_html = tempfile(fileext = ".html")
-      Rd2HTML(rd, out = temp_html)
+      temp_html_eng = tempfile(fileext = ".html")
+      temp_html_french = tempfile(fileext = ".html")
+      html_content_eng = HTML(
+        "<h2>Map Results</h2>
+        <h3>Description</h3>
+        <p>This page displays maps using data generated by the Data Summaries function.
+        First, select the folder containing your Data Summaries output, and load in the data.
+        Next, use the options on the sidebar to view and download the maps.</p>
+        <h3>Inputs</h3>
+        <ul><li>Folder containing the data tables generated by the Data Summaries function.</li>
+        <li>A .txt file listing sites in data.</li></ul>
+        <h3>Outputs</h3>
+        <ul>
+          <li>Maps using data generated by the Data Summaries function. Specifically uses:
+          <ul>
+            <li>*Rumbles_Site_Weekly_Summaries.txt</li>
+            <li>*Rumbles_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Site.txt</li>
+          </ul></li>
+        </ul>
+        <h3>Author(s)</h3>
+        <p>Jidapa Janpathompong</p>")
+      html_content_french = HTML(
+        "<h2>Résultats de la Carte</h2>
+        <h3>Description</h3>
+        <p>Cette page affiche des cartes réalisées à partir des données générées par la fonction Data Summaries.
+        Sélectionnez d'abord le dossier contenant les données générées par la fonction Data Summaries, puis chargez-y les données.
+        Ensuite, utilisez les options de la barre latérale pour visualiser et télécharger les cartes.</p>
+        <h3>Entrées</h3>
+        <ul><li>Dossier contenant les tableaux de données générés par la fonction Data Summaries.</li>
+        <li>Un fichier .txt listant les sites dans les données.</li></ul>
+        <h3>Sorties</h3>
+        <ul>
+          <li>Cartes utilisant les données générées par la fonction Data Summaries. Utilise plus précisément:
+          <ul>
+            <li>*Rumbles_Site_Weekly_Summaries.txt</li>
+            <li>*Rumbles_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Site.txt</li>
+          </ul></li>
+        </ul>
+        <h3>Auteurs</h3>
+        <p>Jidapa Janpathompong</p>")
+      cat(html_content_eng, file = temp_html_eng)
+      cat(html_content_french, file = temp_html_french)
       list(
-        html_path = temp_html,
-        html_content = HTML(read_file(temp_html))
+        html_path_eng = temp_html_eng,
+        html_path_french = temp_html_french,
+        html_content_eng = html_content_eng,
+        html_content_french = html_content_french
       )
     })
-    output$download_maps_help <- downloadHandler(
+    output$download_maps_help_eng <- downloadHandler(
       filename = function(){
         "maps_help.pdf"
       },
       content = function(file){
-        webshot2::webshot(url = maps_help()$html_path, file = file)
+        webshot2::webshot(url = maps_help()$html_path_eng, file = file)
       }
     )
-    output$maps_documentation <- renderText({
-      maps_help()$html_content
+    output$download_maps_help_french <- downloadHandler(
+      filename = function(){
+        "maps_help.pdf"
+      },
+      content = function(file){
+        webshot2::webshot(url = maps_help()$html_path_french, file = file)
+      }
+    )
+    output$maps_documentation_eng <- renderText({
+      maps_help()$html_content_eng
     })
-    # maps_help <- reactive({
-    #   temp_html_eng = tempfile(fileext = ".html")
-    #   temp_html_french = tempfile(fileext = ".html")
-    #   html_content_eng = HTML(
-    #     "<h2>Map Results</h2>
-    #     <h3>Description</h3>
-    #     <p>This page displays maps using data generated by the Data Summaries function.
-    #     The .txt tables generated from the Data Summaries function should be in /data_summaries/summary_tables.
-    #     After loading the data, use the options on the sidebar to view and download the maps.</p>
-    #     <h3>Inputs</h3>
-    #     <ul><li>Project name, deployment number(s), and detector name from Data Summaries
-    #     (see project_name, deployment_num, and detector_name arguments in \"What does \'Data Summaries\' do?</li>
-    #     <li>A .txt file listing sites, latitude, and longitude in the data</li></ul>
-    #     <h3>Outputs</h3>
-    #     <ul>
-    #       <li>Maps using data generated by the Data Summaries function. Specifically uses:
-    #       <ul>
-    #         <li>*Rumbles_Site_Weekly_Summaries.txt</li>
-    #         <li>*Rumbles_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Site.txt</li>
-    #       </ul></li>
-    #     </ul>
-    #     <h3>Author(s)</h3>
-    #     <p>Jidapa Janpathompong</p>")
-    #   html_content_french = HTML(
-    #     "<h2>Résultats de la Carte</h2>
-    #     <h3>Description</h3>
-    #     <p>Cette page affiche des cartes réalisées à partir des données générées par la fonction Data Summaries.
-    #     Les tableaux .txt générés par la fonction Data Summaries devraient se trouver dans /data_summaries/summary_tables.
-    #     Ensuite, utilisez les options de la barre latérale pour visualiser et télécharger les cartes.</p>
-    #     <h3>Entrées</h3>
-    #     <ul><li>Nom du projet, numéro(s) de déploiement et nom du détecteur à partir des Data Summaries
-    #     (voir les arguments project_name, deployment_num et detector_name dans \"Que fait \'Data Summaries\'?\"</li>
-    #     <li>Un fichier .txt listant les sites, la latitude et la longitude figurant dans les données</li></ul>
-    #     <h3>Sorties</h3>
-    #     <ul>
-    #       <li>Cartes utilisant les données générées par la fonction Data Summaries. Utilise plus précisément:
-    #       <ul>
-    #         <li>*Rumbles_Site_Weekly_Summaries.txt</li>
-    #         <li>*Rumbles_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Site.txt</li>
-    #       </ul></li>
-    #     </ul>
-    #     <h3>Auteurs</h3>
-    #     <p>Jidapa Janpathompong</p>")
-    #   cat(html_content_eng, file = temp_html_eng)
-    #   cat(html_content_french, file = temp_html_french)
-    #   list(
-    #     html_path_eng = temp_html_eng,
-    #     html_path_french = temp_html_french,
-    #     html_content_eng = html_content_eng,
-    #     html_content_french = html_content_french
-    #   )
-    # })
-    # output$download_maps_help_eng <- downloadHandler(
-    #   filename = function(){
-    #     "maps_help.pdf"
-    #   },
-    #   content = function(file){
-    #     webshot2::webshot(url = maps_help()$html_path_eng, file = file)
-    #   }
-    # )
-    # output$download_maps_help_french <- downloadHandler(
-    #   filename = function(){
-    #     "maps_help.pdf"
-    #   },
-    #   content = function(file){
-    #     webshot2::webshot(url = maps_help()$html_path_french, file = file)
-    #   }
-    # )
-    # output$maps_documentation_eng <- renderText({
-    #   maps_help()$html_content_eng
-    # })
-    # output$maps_documentation_french <- renderText({
-    #   maps_help()$html_content_french
-    # })
+    output$maps_documentation_french <- renderText({
+      maps_help()$html_content_french
+    })
 
     #all documentation
     all_help <- reactive({
@@ -2655,13 +2889,13 @@ elpRApp <- function(){
       combined_html_eng <- str_c(
         combined_html,
         plots_help()$html_content_eng,
-        maps_help()$html_content,
+        maps_help()$html_content_eng,
         sep = HTML("<div style='page-break-after: always;'></div>")
       )
       combined_html_french <- str_c(
         combined_html,
         plots_help()$html_content_french,
-        maps_help()$html_content,
+        maps_help()$html_content_french,
         sep = HTML("<div style='page-break-after: always;'></div>")
       )
       temp_html_eng = tempfile(fileext = ".html")
@@ -2697,4 +2931,6 @@ elpRApp <- function(){
   #_______________________________________________________________________________
   #### RUN THE APP ####
   shinyApp(ui = ui, server = server)
+  # app_object <- shinyApp(ui = ui, server = server)
+  # runApp(appDir = app_object, launch.browser = TRUE)
 }
