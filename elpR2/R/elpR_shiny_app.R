@@ -60,9 +60,6 @@ elpRApp <- function(){
     return(widget_with_icon)
   }
 
-  #retrieve files_for_elpR path
-  parent_dir_path <- paste0(dirname(here::here()), "/files_for_elpR")
-
   #_______________________________________________________________________________
   #### DEFINE UI ####
   ui <- page_fillable(
@@ -178,6 +175,10 @@ elpRApp <- function(){
         layout_columns(
           card(
             card_header(textOutput("card_1_1")),
+            uiOutput("card_1_1_parent_dir"),
+            add_info(textInput("parent_dir_text_in", label = "Or paste the parent folder path", value = ""), "parent_dir"),
+            add_info(shinyDirButton(id = "parent_dir_in", label = NULL, icon = icon("folder-open"), title = "Choose the parent files_for_elpR folder"), "parent_dir"),
+            textOutput("parent_dir_recieved"),
             add_info(textInput("deployment_name_in", label = uiOutput("card_1_1_dep_name"), value = "kk_202405_may"), "deployment_name"),
             add_info(textInput("deployment_num_in", label = uiOutput("card_1_1_dep_num"), value = "02"), "deployment_num"),
             add_info(textInput("disk_ID_in", label = uiOutput("card_1_1_disk_ID"), value = "00"), "disk_ID"),
@@ -375,7 +376,8 @@ elpRApp <- function(){
 
             add_info(textInput("project_name_in", label = uiOutput("card_1_5_proj"), value = "PNNN"), "project_name"),
             add_info(textInput("deployment_nums_in", label = uiOutput("card_1_5_dep_num"), value = "01-20"), "deployment_num"),
-            add_info(selectInput("summary_detector_in", uiOutput("card_1_5_detect"), choices = list("HoriHarm", "FruitPunchAI", "Stanford Detector")), "detector_name"),
+            add_info(selectInput("summary_detector_in", uiOutput("card_1_5_detect"), choices = list("HoriHarm", "FruitPunchAI", "Stanford Detector", "DTDguns8")), "detector_name"),
+            add_info(textInput("event_count_column_in", label = uiOutput("card_1_5_event_count"), value = "Count"), "event_count_column"),
             textOutput("summary_folder_recieved"),
             uiOutput("card_1_5_tables_path"),
             add_info(shinyDirButton(id = "selection_tables_folder_in", label = NULL, icon = icon("folder-open"), title = "Choose folder containing selection tables"), "ele_tables"),
@@ -398,8 +400,8 @@ elpRApp <- function(){
             uiOutput("use_only_sites_provided_output"),
             add_info(radioButtons("rand_dates_needed_in", label = uiOutput("card_2_5_rand"),
                                   choices = list("Yes", "No"), selected = "No"), "rand_dates_needed"),
-            add_info(radioButtons("ele_bad_sound_remove_in", label = uiOutput("card_2_5_min_hrs"),
-                                  choices = list("Yes", "No"), selected = "No"), "ele_bad_sound_remove")
+            add_info(radioButtons("events_bad_sound_remove_in", label = uiOutput("card_2_5_min_hrs"),
+                                  choices = list("Yes", "No"), selected = "No"), "events_bad_sound_remove")
           ),
 
           card(
@@ -570,10 +572,12 @@ elpRApp <- function(){
     output$text_link <- renderUI({text_link_eng})
 
     output$card_1_1 <- renderText({card_1_1_eng})
+    output$card_1_1_parent_dir <- renderUI({card_1_1_parent_dir_eng})
     output$card_1_1_dep_name <- renderUI({card_1_1_dep_name_eng})
     output$card_1_1_dep_num <- renderText({card_1_1_dep_num_eng})
     output$card_1_1_disk_ID <- renderText({card_1_1_disk_ID_eng})
     output$card_1_1_sites <- renderText({card_1_1_sites_eng})
+    output$parent_dir_recieved <- renderText({parent_dir_recieved_eng()})
 
     output$card_1_2 <- renderText({card_1_2_eng})
     output$card_1_2_sound_path <- renderUI({card_1_2_sound_path_eng})
@@ -633,6 +637,7 @@ elpRApp <- function(){
     output$card_1_5_proj <- renderUI({card_1_5_proj_eng})
     output$card_1_5_dep_num <- renderUI({card_1_5_dep_num_eng})
     output$card_1_5_detect <- renderUI({card_1_5_detect_eng})
+    output$card_1_5_event_count <- renderUI({card_1_5_event_count_eng})
     output$card_1_5_out_path <- renderUI({card_1_5_out_path_eng})
     output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
     output$selection_tables_folder_recieved <- renderText({selection_tables_folder_recieved_eng()})
@@ -725,10 +730,12 @@ elpRApp <- function(){
       output$text_link <- renderUI({text_link_eng})
 
       output$card_1_1 <- renderText({card_1_1_eng})
+      output$card_1_1_parent_dir <- renderUI({card_1_1_parent_dir_eng})
       output$card_1_1_dep_name <- renderUI({card_1_1_dep_name_eng})
       output$card_1_1_dep_num <- renderText({card_1_1_dep_num_eng})
       output$card_1_1_disk_ID <- renderText({card_1_1_disk_ID_eng})
       output$card_1_1_sites <- renderText({card_1_1_sites_eng})
+      output$parent_dir_recieved <- renderText({parent_dir_recieved_eng()})
 
       output$card_1_2 <- renderText({card_1_2_eng})
       output$card_1_2_sound_path <- renderUI({card_1_2_sound_path_eng})
@@ -788,6 +795,7 @@ elpRApp <- function(){
       output$card_1_5_proj <- renderUI({card_1_5_proj_eng})
       output$card_1_5_dep_num <- renderUI({card_1_5_dep_num_eng})
       output$card_1_5_detect <- renderUI({card_1_5_detect_eng})
+      output$card_1_5_event_count <- renderUI({card_1_5_event_count_eng})
       output$card_1_5_out_path <- renderUI({card_1_5_out_path_eng})
       output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
       output$selection_tables_folder_recieved <- renderText({selection_tables_folder_recieved_eng()})
@@ -872,10 +880,12 @@ elpRApp <- function(){
       output$text_link <- renderUI({text_link_french})
 
       output$card_1_1 <- renderText({card_1_1_french})
+      output$card_1_1_parent_dir <- renderUI({card_1_1_parent_dir_french})
       output$card_1_1_dep_name <- renderText({card_1_1_dep_name_french})
       output$card_1_1_dep_num <- renderText({card_1_1_dep_num_french})
       output$card_1_1_disk_ID <- renderText({card_1_1_disk_ID_french})
       output$card_1_1_sites <- renderText({card_1_1_sites_french})
+      output$parent_dir_recieved <- renderText({parent_dir_recieved_french()})
 
       output$card_1_2 <- renderText({card_1_2_french})
       output$card_1_2_sound_path <- renderUI({card_1_2_sound_path_french})
@@ -935,6 +945,7 @@ elpRApp <- function(){
       output$card_1_5_proj <- renderUI({card_1_5_proj_french})
       output$card_1_5_dep_num <- renderUI({card_1_5_dep_num_french})
       output$card_1_5_detect <- renderUI({card_1_5_detect_french})
+      output$card_1_5_event_count <- renderUI({card_1_5_event_count_french})
       output$card_1_5_out_path <- renderUI({card_1_5_out_path_french})
       output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_french})
       output$selection_tables_folder_recieved <- renderText({selection_tables_folder_recieved_french()})
@@ -1061,14 +1072,29 @@ elpRApp <- function(){
     #______________________________________
     ##### 1. Basic Info #####
 
+    #retrieve the user-selected parent directory
+    shinyDirChoose(input, "parent_dir_in", roots = volumes)
+    parent_dir_path <- reactive({
+      pasted_path <- trimws(if (is.null(input$parent_dir_text_in)) "" else input$parent_dir_text_in)
+      if (nzchar(pasted_path)) {
+        normalizePath(pasted_path, winslash = "/", mustWork = FALSE)
+      } else {
+        parseDirPath(volumes, input$parent_dir_in)
+      }
+    })
+    parent_dir_recieved_eng <- reactive({paste("Path received: ", parent_dir_path())})
+    parent_dir_recieved_french <- reactive({paste("Chemin reçu: ", parent_dir_path())})
+
     #English & French translations
     card_1_1_eng <- "Input Basic Information"
+    card_1_1_parent_dir_eng <- HTML("<p><b>INPUT 1:</b> Choose the parent files_for_elpR folder</p>")
     card_1_1_dep_name_eng <- HTML("<p><b>INPUT 1:</b> Deployment name</p>")
     card_1_1_dep_num_eng <- HTML("<p><b>INPUT 2:</b> Deployment number</p>")
     card_1_1_disk_ID_eng <- HTML("<p><b>INPUT 3:</b> Disk ID</p>")
     card_1_1_sites_eng <- HTML("<p><b>INPUT 4:</b> Sites .txt file</p>")
 
     card_1_1_french <- "Saisir des informations de base"
+    card_1_1_parent_dir_french <- HTML("<p><b>ENTRÉE 1:</b> Choisissez le dossier parent files_for_elpR</p>")
     card_1_1_dep_name_french <- HTML("<p><b>ENTRÉE 1:</b> Nom du déploiement</p>")
     card_1_1_dep_num_french <- HTML("<p><b>ENTRÉE 2:</b> Numéro de déploiement</p>")
     card_1_1_disk_ID_french <- HTML("<p><b>ENTRÉE 3:</b> ID de disque</p>")
@@ -1152,9 +1178,10 @@ elpRApp <- function(){
 
     #BUTTON: run sound check
     observeEvent(input$run_sound_check_in, {
+      req(parent_dir_path())
       result <- sound_check_function(
         x = parseDirPath(volumes, input$sound_path_in),
-        parent_dir = parent_dir_path,
+        parent_dir = parent_dir_path(),
         deployment_name = input$deployment_name_in,
         deployment_num = input$deployment_num_in,
         disk_ID = input$disk_ID_in,
@@ -1250,6 +1277,7 @@ elpRApp <- function(){
 
     #BUTTON: run exclude files
     observeEvent(input$run_exclude_files_in, {
+      req(parent_dir_path())
       if(input$have_swift_files_in == "Yes"){
         have_SwiftFiles_value = "y"
         if(input$merge_swift_files_in == "Yes"){
@@ -1263,7 +1291,7 @@ elpRApp <- function(){
       }
       result <- sound_exclude_function(
         sound_path = parseDirPath(volumes, input$sound_path_in),
-        parent_dir = parent_dir_path,
+        parent_dir = parent_dir_path(),
         extra_sounds_folder = parseDirPath(volumes, input$extra_sounds_in),
         deployment_name = input$deployment_name_in,
         deployment_num = input$deployment_num_in,
@@ -1348,6 +1376,7 @@ elpRApp <- function(){
 
     #BUTTON: run rumble restructure
     observeEvent(input$run_restructure_in, {
+      req(parent_dir_path())
       if(input$three_rand_days_in == "Yes"){
         three_rand_days_value = "y"
       } else if(input$three_rand_days_in == "No"){
@@ -1367,7 +1396,7 @@ elpRApp <- function(){
       }
 
       result <- restructure_rumble_function(
-        parent_dir = parent_dir_path,
+        parent_dir = parent_dir_path(),
         deployment_name = input$deployment_name_in,
         deployment_num = input$deployment_num_in,
         disk_ID = input$disk_ID_in,
@@ -1448,8 +1477,9 @@ elpRApp <- function(){
 
     #BUTTON: run gun restructure
     observeEvent(input$run_gun_restructure_in, {
+      req(parent_dir_path())
       result <- restructure_gunshot_function(
-        parent_dir = parent_dir_path,
+        parent_dir = parent_dir_path(),
         deployment_name = input$deployment_name_in,
         deployment_num = input$deployment_num_in,
         disk_ID = input$disk_ID_in,
@@ -1539,6 +1569,7 @@ elpRApp <- function(){
     card_1_5_proj_eng <- HTML("<p><b>INPUT 1:</b> Project name</p>")
     card_1_5_dep_num_eng <- HTML("<p><b>INPUT 2:</b> Deployment number(s)</p>")
     card_1_5_detect_eng <- HTML("<p><b>INPUT 3:</b> Detector used</p>")
+    card_1_5_event_count_eng <- HTML("<p><b>INPUT 4:</b> Event-count column name</p>")
     card_1_5_tables_path_eng <- HTML("<p><b>INPUT 5:</b> Choose folder containing selection tables</p>")
     card_1_5_zero_path_eng <- HTML("<p><b>INPUT 6:</b> Choose folder containing zero-day selection tables</p>")
     card_2_5_eng <- "Input OPTIONAL Data Summaries Information"
@@ -1554,6 +1585,7 @@ elpRApp <- function(){
     card_1_5_proj_french <- HTML("<p><b>ENTRÉE 1:</b> Nom du projet</p>")
     card_1_5_dep_num_french <- HTML("<p><b>ENTRÉE 2:</b> Numéro(s) de déploiement</p>")
     card_1_5_detect_french <- HTML("<p><b>ENTRÉE 3:</b> Détecteur utilisé</p>")
+    card_1_5_event_count_french <- HTML("<p><b>ENTRÉE 4:</b> Nom de la colonne de comptage des événements</p>")
     card_1_5_tables_path_french <- HTML("<p><b>ENTRÉE 5:</b> Choisissez le dossier contenant les tables de sélection</p>")
     card_1_5_zero_path_french <- HTML("<p><b>ENTRÉE 6:</b> Choisissez le dossier contenant les tables de sélection zero-day</p>")
     card_2_5_french <- "Saisir les informations facultatives Data Summaries"
@@ -1623,14 +1655,15 @@ elpRApp <- function(){
         project_name = input$project_name_in,
         deployment_num = input$deployment_nums_in,
         detector_name = input$summary_detector_in,
-        ele_tables = parseDirPath(volumes, input$selection_tables_folder_in),
+        event_count_column = input$event_count_column_in,
+        selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
         zero_txt = parseDirPath(volumes, input$zero_selection_tables_folder_in),
         sound_check_include = input$sound_check_include_in,
         sound_checks = sound_check_folder_value,
         use_only_sites_provided = input$use_only_sites_provided_in,
         site_lat_long = sites_lat_long_value,
         rand_dates_needed = input$rand_dates_needed_in,
-        ele_bad_sound_remove = input$ele_bad_sound_remove_in
+        events_bad_sound_remove = input$events_bad_sound_remove_in
       )
     })
 
@@ -1669,6 +1702,7 @@ elpRApp <- function(){
 
     #BUTTON: run summary
     observeEvent(input$run_summary_in, {
+      req(parent_dir_path())
       if(input$sound_check_include_in == "Yes"){
         sound_check_include_value = "y"
         sound_check_folder_value = parseDirPath(volumes, input$sound_check_folder_in)
@@ -1688,25 +1722,26 @@ elpRApp <- function(){
       } else if(input$rand_dates_needed_in == "No"){
         rand_dates_needed_value = "n"
       }
-      if(input$ele_bad_sound_remove_in == "Yes"){
-        ele_bad_sound_remove_value = "y"
-      } else if(input$ele_bad_sound_remove_in == "No"){
-        ele_bad_sound_remove_value = "n"
+      if(input$events_bad_sound_remove_in == "Yes"){
+        events_bad_sound_remove_value = "y"
+      } else if(input$events_bad_sound_remove_in == "No"){
+        events_bad_sound_remove_value = "n"
       }
 
       result <- data_summaries_function(
-        parent_dir = parent_dir_path,
+        parent_dir = parent_dir_path(),
         project_name = input$project_name_in,
         deployment_num = input$deployment_nums_in,
         detector_name = input$summary_detector_in,
-        ele_tables = parseDirPath(volumes, input$selection_tables_folder_in),
+        event_count_column = input$event_count_column_in,
+        selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
         zero_txt = parseDirPath(volumes, input$zero_selection_tables_folder_in),
         sound_check_include = sound_check_include_value,
         sound_checks = sound_check_folder_value,
         use_only_sites_provided = use_only_sites_provided_value,
         site_lat_long = sites_lat_long_value,
         rand_dates_needed = rand_dates_needed_value,
-        ele_bad_sound_remove = ele_bad_sound_remove_value
+        events_bad_sound_remove = events_bad_sound_remove_value
       )
       output$run_summary_output <- renderPrint({
         result
@@ -1764,9 +1799,10 @@ elpRApp <- function(){
     #BUTTON: load plots from data summaries
     saved_plots <- reactiveVal({})
     observeEvent(input$load_plots, {
+      req(parent_dir_path())
       #load plots into environment from user inputted file path
       saved_plots(
-        readRDS(paste0(parent_dir_path,
+        readRDS(paste0(parent_dir_path(),
                        "/data_summaries/summary_plots/",
                        input$project_name_in,
                        "_dep",input$deployment_nums_in,
@@ -2057,13 +2093,27 @@ elpRApp <- function(){
     #BUTTON: load maps from data summaries
     maps_function_output <- reactiveVal(list())
     observeEvent(input$load_tables, {
+      req(parent_dir_path())
+      req(input$site_lat_long_map)
 
       #run maps_function
-      result <- maps_function(
-        folder_path = paste0(parent_dir_path,
-                             "/data_summaries/summary_tables/"),
-        site_lat_long = input$site_lat_long_map$datapath
+      result <- tryCatch(
+        maps_function(
+          folder_path = paste0(parent_dir_path(),
+                               "/data_summaries/summary_tables/"),
+          site_lat_long = input$site_lat_long_map$datapath
+        ),
+        error = function(error) {
+          message("Maps failed: ", conditionMessage(error))
+          showNotification(
+            paste("Maps failed:", conditionMessage(error)),
+            type = "error",
+            duration = NULL
+          )
+          NULL
+        }
       )
+      req(result)
       maps_function_output(result)
 
       #display drop-down menu for choosing maps
@@ -2095,9 +2145,9 @@ elpRApp <- function(){
       if(input$map_input == "Year"){
 
         req(maps_function_output())
-        req(maps_function_output()$ele_year_avg)
+        req(maps_function_output()$event_year_avg)
 
-        ele_year_avg <- maps_function_output()$ele_year_avg
+        ele_year_avg <- maps_function_output()$event_year_avg
         years_vector <- sort(unique(ele_year_avg$Year))
 
         insertUI(
@@ -2113,9 +2163,9 @@ elpRApp <- function(){
       if(input$map_input == "Month"){
 
         req(maps_function_output())
-        req(maps_function_output()$ele_month_avg)
+        req(maps_function_output()$event_month_avg)
 
-        ele_month_avg <- maps_function_output()$ele_month_avg
+        ele_month_avg <- maps_function_output()$event_month_avg
         months_vector <- sort(unique(ele_month_avg$Month))
 
         insertUI(
@@ -2132,7 +2182,7 @@ elpRApp <- function(){
 
     #select maps based on drop-down menu selections
     display_this_map <- reactive({
-      ele_site_avg <- maps_function_output()$ele_site_avg
+      ele_site_avg <- maps_function_output()$event_site_avg
       #choose map to display based on user's drop-down selections
       if(input$map_input == "Default"){
         maps_function_output()$default_map
@@ -2149,9 +2199,9 @@ elpRApp <- function(){
           NULL
         }
       } else if(input$map_input == "Year"){
-        ele_year_avg <- maps_function_output()$ele_year_avg
-        color_by_rumbles <- colorNumeric(palette = "viridis",
-                                         domain = range(ele_year_avg$`Avg Rumbles`))
+        ele_year_avg <- maps_function_output()$event_year_avg
+        color_by_Events <- colorNumeric(palette = "viridis",
+                                         domain = range(ele_year_avg$`Avg Events`))
 
         year_map <- maps_function_output()$year_map %>%
 
@@ -2161,18 +2211,18 @@ elpRApp <- function(){
               filter(Year == input$year_slider_input),
             lng = ~Longitude,
             lat = ~Latitude,
-            radius = ~sqrt(`Avg Rumbles`) * 8,  # Adjust the multiplier to change circle sizes
-            popup = ~paste("Site:", Site, "<br>Avg Rumbles:", `Avg Rumbles`),
-            color = ~color_by_rumbles(`Avg Rumbles`),
+            radius = ~sqrt(`Avg Events`) * 8,  # Adjust the multiplier to change circle sizes
+            popup = ~paste("Site:", Site, "<br>Avg Events:", `Avg Events`),
+            color = ~color_by_Events(`Avg Events`),
             fillOpacity = 0.7,
             group = paste(input$year_slider_input)
           )
 
         year_map
       } else if(input$map_input == "Month"){
-        ele_month_avg <- maps_function_output()$ele_month_avg
-        color_by_rumbles <- colorNumeric(palette = "viridis",
-                                         domain = range(ele_month_avg$`Avg Rumbles`))
+        ele_month_avg <- maps_function_output()$event_month_avg
+        color_by_Events <- colorNumeric(palette = "viridis",
+                                         domain = range(ele_month_avg$`Avg Events`))
 
         month_map <- maps_function_output()$month_map %>%
 
@@ -2182,10 +2232,10 @@ elpRApp <- function(){
               filter(Month == input$month_slider_input),
             lng = ~Longitude,
             lat = ~Latitude,
-            radius = ~sqrt(`Avg Rumbles`) * 8,  # Adjust the multiplier to change circle sizes
+            radius = ~sqrt(`Avg Events`) * 8,  # Adjust the multiplier to change circle sizes
             popup = ~paste("Site:", Site,
-                           "<br>Avg Rumbles:", `Avg Rumbles`),
-            color = ~color_by_rumbles(`Avg Rumbles`),
+                           "<br>Avg Events:", `Avg Events`),
+            color = ~color_by_Events(`Avg Events`),
             fillOpacity = 0.7,
             group = paste(input$month_slider_input)
           )
@@ -2242,15 +2292,15 @@ elpRApp <- function(){
     #select data tables to display based on drop-down menu selections
     display_this_df <- reactive({
       if(input$map_input == "Default"){
-        maps_function_output()$ele_site_avg
+        maps_function_output()$event_site_avg
       } else if(input$map_input == "Strata"){
-        maps_function_output()$ele_site_avg
+        maps_function_output()$event_site_avg
       } else if(input$map_input == "Vegetation Class"){
-        maps_function_output()$ele_site_avg
+        maps_function_output()$event_site_avg
       } else if(input$map_input == "Year"){
-        maps_function_output()$ele_year_avg
+        maps_function_output()$event_year_avg
       } else if(input$map_input == "Month"){
-        maps_function_output()$ele_month_avg
+        maps_function_output()$event_month_avg
       }
     })
 
@@ -2334,9 +2384,22 @@ elpRApp <- function(){
       downloadButton("download_maps_help", label = NULL),
       htmlOutput("maps_documentation"))})
 
+    rd_path <- function(filename) {
+      installed_path <- system.file("man", filename, package = "elpR2")
+      if (nzchar(installed_path) && file.exists(installed_path)) {
+        installed_path
+      } else {
+        local_path <- file.path("man", filename)
+        if (!file.exists(local_path)) {
+          stop("Documentation file not found: ", filename)
+        }
+        local_path
+      }
+    }
+
     #sound_check_documentation
     sound_check_help <- reactive({
-      rd = system.file("man", "sound_check_function.Rd", package = "elpR2")
+      rd = rd_path("sound_check_function.Rd")
       temp_html = tempfile(fileext = ".html")
       Rd2HTML(rd, out = temp_html)
       list(
@@ -2358,7 +2421,7 @@ elpRApp <- function(){
 
     #exclude_files_documentation
     exclude_files_help <- reactive({
-      rd = system.file("man", "sound_exclude_function.Rd", package = "elpR2")
+      rd = rd_path("sound_exclude_function.Rd")
       temp_html = tempfile(fileext = ".html")
       Rd2HTML(rd, out = temp_html)
       list(
@@ -2380,7 +2443,7 @@ elpRApp <- function(){
 
     #restructure_documentation
     restructure_help <- reactive({
-      rd = system.file("man", "restructure_rumble_function.Rd", package = "elpR2")
+      rd = rd_path("restructure_rumble_function.Rd")
       temp_html = tempfile(fileext = ".html")
       Rd2HTML(rd, out = temp_html)
       list(
@@ -2402,7 +2465,7 @@ elpRApp <- function(){
 
     #gun_restructure_documentation
     gun_restructure_help <- reactive({
-      rd = system.file("man", "restructure_gunshot_function.Rd", package = "elpR2")
+      rd = rd_path("restructure_gunshot_function.Rd")
       temp_html = tempfile(fileext = ".html")
       Rd2HTML(rd, out = temp_html)
       list(
@@ -2424,7 +2487,7 @@ elpRApp <- function(){
 
     #general_restructure_documentation
     general_restructure_help <- reactive({
-      rd = system.file("man", "restructure_general_function.Rd", package = "elpR2")
+      rd = rd_path("restructure_general_function.Rd")
       temp_html = tempfile(fileext = ".html")
       Rd2HTML(rd, out = temp_html)
       list(
@@ -2446,7 +2509,7 @@ elpRApp <- function(){
 
     #summary_documentation
     summary_help <- reactive({
-      rd = system.file("man", "data_summaries_function.Rd", package = "elpR2")
+      rd = rd_path("data_summaries_function.Rd")
       temp_html = tempfile(fileext = ".html")
       Rd2HTML(rd, out = temp_html)
       list(
@@ -2533,7 +2596,7 @@ elpRApp <- function(){
 
     #maps_documentation
     maps_help <- reactive({
-      rd = system.file("man", "maps_function.Rd", package = "elpR2")
+      rd = rd_path("maps_function.Rd")
       temp_html = tempfile(fileext = ".html")
       Rd2HTML(rd, out = temp_html)
       list(

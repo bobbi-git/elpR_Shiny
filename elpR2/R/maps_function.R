@@ -9,105 +9,135 @@
 #'
 #' @returns This function outputs a list containing tables and leaflet maps:
 #' \itemize{
-#'  \item ele_site_avg: a table summarizing average daily rumbles per site
-#'  \item ele_year_avg: a table summarizing average daily rumbles per site per year
-#'  \item ele_month_avg: a table summarizing average daily rumbles per site per month
-#'  \item default_map: a leaflet map displaying average daily rumbles at each site
-#'  \item strata_map: a leaflet map displaying average daily rumbles at each site, with sites colored by strata
-#'  \item veg_map: a leaflet map displaying average daily rumbles at each site, with sites colored by vegetation class
-#'  \item year_map: a leaflet map with sites colored by average daily rumbles; data intended to be displayed in elpRApp()
-#'  \item month_map: a leaflet map with sites colored by average daily rumbles; data intended to be displayed in elpRApp()
+#'  \item event_site_avg: a table summarizing average daily events per site
+#'  \item event_year_avg: a table summarizing average daily events per site per year
+#'  \item event_month_avg: a table summarizing average daily events per site per month
+#'  \item default_map: a leaflet map displaying average daily events at each site
+#'  \item strata_map: a leaflet map displaying average daily events at each site, with sites colored by strata
+#'  \item veg_map: a leaflet map displaying average daily events at each site, with sites colored by vegetation class
+#'  \item year_map: a leaflet map with sites colored by average daily events; data intended to be displayed in elpRApp()
+#'  \item month_map: a leaflet map with sites colored by average daily events; data intended to be displayed in elpRApp()
 #' }
 #' @export
 
 maps_function <- function(folder_path, site_lat_long){
   print("Running maps_function...")
 
+  if (!dir.exists(folder_path)) {
+    stop("Maps summary folder does not exist: ", folder_path)
+  }
+  if (!file.exists(site_lat_long)) {
+    stop("Sites latitude/longitude file does not exist: ", site_lat_long)
+  }
+
   #### LOAD TABLES ####
   #load tables from user inputted folder path
-  ele_weekly <- read_tsv(paste0(
-    folder_path,
-    list.files(path = folder_path,
-               pattern = "Rumbles_Site_Weekly_Summaries.txt")
-    ),
+  weekly_files <- list.files(path = folder_path,
+                             pattern = "Events_Site_Weekly_Summaries.txt",
+                             full.names = TRUE)
+  monthly_files <- list.files(path = folder_path,
+                              pattern = "Events_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Site.txt",
+                              full.names = TRUE)
+  if (length(weekly_files) != 1) {
+    stop("Expected exactly one Events weekly summary file; found ", length(weekly_files),
+         " in ", folder_path)
+  }
+  if (length(monthly_files) != 1) {
+    stop("Expected exactly one Events monthly summary file; found ", length(monthly_files),
+         " in ", folder_path)
+  }
+  events_weekly <- read_tsv(
+    weekly_files,
     col_names = TRUE)
-  ele_monthly_site <- read_tsv(paste0(
-    folder_path,
-    list.files(path = folder_path,
-               pattern = "Rumbles_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Site.txt")
-    ),
+  events_monthly_site <- read_tsv(
+    monthly_files,
     col_names = TRUE)
   site_lat_long_map <- read_tsv(
     site_lat_long,
     col_names = TRUE)
 
+  required_weekly_columns <- c("Site", "Latitude", "Longitude", "sumEvents", "n")
+  missing_weekly_columns <- setdiff(required_weekly_columns, names(events_weekly))
+  if (length(missing_weekly_columns) > 0) {
+    stop("Weekly Events summary is missing columns: ", paste(missing_weekly_columns, collapse = ", "))
+  }
+  required_monthly_columns <- c("Site", "Year", "Month", "sumEvents", "n")
+  missing_monthly_columns <- setdiff(required_monthly_columns, names(events_monthly_site))
+  if (length(missing_monthly_columns) > 0) {
+    stop("Monthly Events summary is missing columns: ", paste(missing_monthly_columns, collapse = ", "))
+  }
+  missing_site_columns <- setdiff(c("Site", "Latitude", "Longitude"), names(site_lat_long_map))
+  if (length(missing_site_columns) > 0) {
+    stop("Sites file is missing columns: ", paste(missing_site_columns, collapse = ", "))
+  }
+
   #### CONFIGURE TABLES ####
   #initialize empty list to hold this function's outputs
   output_list <- list()
 
-  #make tables summarizing avg daily rumbles per site
-  if("Vegetation Class" %in% names(ele_weekly) &&
-     "Strata" %in% names(ele_weekly)){
-    #avg daily rumbles for "Strata" & "Vegetation Class"
+  #make tables summarizing avg daily Events per site
+  if("Vegetation Class" %in% names(events_weekly) &&
+     "Strata" %in% names(events_weekly)){
+    #avg daily Events for "Strata" & "Vegetation Class"
     output_list <- c(
       output_list,
       list(
-        ele_site_avg =
-          ele_weekly %>%
+        event_site_avg =
+          events_weekly %>%
           group_by(Site) %>%
           summarize(
             "Latitude" = round(first(Latitude),5),
             "Longitude" = round(first(Longitude),5),
-            "Avg Rumbles" = sum(sumRumbles)/sum(n),
+            "Avg Events" = sum(sumEvents)/sum(n),
             "Strata" = first(Strata),
             "Vegetation Class" = first(`Vegetation Class`)
           )
       )
     )
-  } else if("Strata" %in% names(ele_weekly)){
-    #avg daily rumbles for "Strata"
+  } else if("Strata" %in% names(events_weekly)){
+    #avg daily Events for "Strata"
     output_list <- c(
       output_list,
       list(
-        ele_site_avg =
-          ele_weekly %>%
+        event_site_avg =
+          events_weekly %>%
           group_by(Site) %>%
           summarize(
             "Latitude" = round(first(Latitude),5),
             "Longitude" = round(first(Longitude),5),
-            "Avg Rumbles" = sum(sumRumbles)/sum(n),
+            "Avg Events" = sum(sumEvents)/sum(n),
             "Strata" = first(Strata)
           )
       )
     )
-  } else if("Vegetation Class" %in% names(ele_weekly)){
-    #avg daily rumbles for "Vegetation Class"
+  } else if("Vegetation Class" %in% names(events_weekly)){
+    #avg daily Events for "Vegetation Class"
     output_list <- c(
       output_list,
       list(
-        ele_site_avg =
-          ele_weekly %>%
+        event_site_avg =
+          events_weekly %>%
           group_by(Site) %>%
           summarize(
             "Latitude" = round(first(Latitude),5),
             "Longitude" = round(first(Longitude),5),
-            "Avg Rumbles" = sum(sumRumbles)/sum(n),
+            "Avg Events" = sum(sumEvents)/sum(n),
             "Vegetation Class" = first(`Vegetation Class`)
           )
       )
     )
   } else{
-    #avg daily rumbles with NO "Strata" NOR "Vegetation Class"
+    #avg daily Events with NO "Strata" NOR "Vegetation Class"
     output_list <- c(
       output_list,
       list(
-        ele_site_avg =
-          ele_weekly %>%
+        event_site_avg =
+          events_weekly %>%
           group_by(Site) %>%
           summarize(
             "Latitude" = round(first(Latitude),5),
             "Longitude" = round(first(Longitude),5),
-            "Avg Rumbles" = sum(sumRumbles)/sum(n)
+            "Avg Events" = sum(sumEvents)/sum(n)
           )
       )
     )
@@ -116,21 +146,21 @@ maps_function <- function(folder_path, site_lat_long){
   output_list <- c(
     output_list,
     list(
-      #avg daily rumbles for "Year"
-      ele_year_avg =
-        ele_monthly_site %>%
+      #avg daily Events for "Year"
+      event_year_avg =
+        events_monthly_site %>%
         group_by(Site, Year) %>%
         summarize(
-          "Avg Rumbles" = sum(sumRumbles)/sum(n)
+          "Avg Events" = sum(sumEvents)/sum(n)
         ) %>%
         merge(site_lat_long_map, by = "Site"),
 
-      #avg daily rumbles for "Month"
-      ele_month_avg =
-        ele_monthly_site %>%
+      #avg daily Events for "Month"
+      event_month_avg =
+        events_monthly_site %>%
         group_by(Site, Month) %>%
         summarize(
-          "Avg Rumbles" = sum(sumRumbles)/sum(n)
+          "Avg Events" = sum(sumEvents)/sum(n)
         ) %>%
         merge(site_lat_long_map, by = "Site")
     )
@@ -138,37 +168,37 @@ maps_function <- function(folder_path, site_lat_long){
 
   #### CREATE MAPS####
   #retrieve configured tables
-  ele_site_avg <- output_list$ele_site_avg
-  ele_year_avg <- output_list$ele_year_avg
-  ele_month_avg <- output_list$ele_month_avg
+  event_site_avg <- output_list$event_site_avg
+  event_year_avg <- output_list$event_year_avg
+  event_month_avg <- output_list$event_month_avg
 
   #BASE MAP - set lat & long
-  base_map <- leaflet(ele_site_avg) %>%
+  base_map <- leaflet(event_site_avg) %>%
 
     #Add default base map
     addProviderTiles(provider = providers$Esri.WorldTopoMap,
                      group = "map") %>%
 
     #Set center point and zoom level
-    setView(lng = mean(ele_site_avg$Longitude),
-            lat = mean(ele_site_avg$Latitude),
+    setView(lng = mean(event_site_avg$Longitude),
+            lat = mean(event_site_avg$Latitude),
             zoom = 10)
 
-  #DEFAULT MAP - add circle markers for avg rumbles
+  #DEFAULT MAP - add circle markers for avg Events
   default_map <- base_map %>%
 
     #Add markers
     addCircleMarkers(
       lng = ~Longitude,
       lat = ~Latitude,
-      radius = ~sqrt(`Avg Rumbles`) * 10,  # Adjust the multiplier to change circle sizes
-      popup = ~paste("Site:", Site, "<br>Avg Rumbles:", `Avg Rumbles`),
+      radius = ~sqrt(`Avg Events`) * 10,  # Adjust the multiplier to change circle sizes
+      popup = ~paste("Site:", Site, "<br>Avg Events:", `Avg Events`),
       fillOpacity = 0.7
     )
 
-  #STRATA MAP - add circle markers for avg rumbles & color by strata
+  #STRATA MAP - add circle markers for avg Events & color by strata
   color_by_strata <- colorFactor(palette = "viridis",
-                                 domain = unique(ele_site_avg$Strata))
+                                 domain = unique(event_site_avg$Strata))
   strata_map <- base_map %>%
 
     #Add legend
@@ -180,12 +210,12 @@ maps_function <- function(folder_path, site_lat_long){
     ) %>%
 
     #Add layers control
-    addLayersControl(overlayGroups = unique(ele_site_avg$Strata),
+    addLayersControl(overlayGroups = unique(event_site_avg$Strata),
                      position = "topleft")
 
   #Add markers
-  for(strata in unique(ele_site_avg$Strata)){
-    subset_data <- ele_site_avg %>%
+  for(strata in unique(event_site_avg$Strata)){
+    subset_data <- event_site_avg %>%
       filter(Strata == strata)
 
     strata_map <- strata_map %>%
@@ -193,17 +223,17 @@ maps_function <- function(folder_path, site_lat_long){
         data = subset_data,
         lng = ~Longitude,
         lat = ~Latitude,
-        radius = ~sqrt(`Avg Rumbles`) * 10,  # Adjust the multiplier to change circle sizes
-        popup = ~paste("Site:", Site, "<br>Avg Rumbles:", `Avg Rumbles`),
+        radius = ~sqrt(`Avg Events`) * 10,  # Adjust the multiplier to change circle sizes
+        popup = ~paste("Site:", Site, "<br>Avg Events:", `Avg Events`),
         color = ~color_by_strata(Strata),
         fillOpacity = 0.7,
         group = paste(strata)
       )
   }
 
-  #VEGETATION CLASS MAP - add circle markers for avg rumbles & color by veg class
+  #VEGETATION CLASS MAP - add circle markers for avg Events & color by veg class
   color_by_veg <- colorFactor(palette = "plasma",
-                              domain = unique(ele_site_avg$`Vegetation Class`))
+                              domain = unique(event_site_avg$`Vegetation Class`))
   veg_map <- base_map %>%
 
     #Add legend
@@ -215,12 +245,12 @@ maps_function <- function(folder_path, site_lat_long){
     ) %>%
 
     #Add layers control
-    addLayersControl(overlayGroups = unique(ele_site_avg$`Vegetation Class`),
+    addLayersControl(overlayGroups = unique(event_site_avg$`Vegetation Class`),
                      position = "topleft")
 
   #Add markers
-  for(veg in unique(ele_site_avg$`Vegetation Class`)){
-    subset_data <- ele_site_avg %>%
+  for(veg in unique(event_site_avg$`Vegetation Class`)){
+    subset_data <- event_site_avg %>%
       filter(`Vegetation Class` == veg)
 
     veg_map <- veg_map %>%
@@ -228,56 +258,56 @@ maps_function <- function(folder_path, site_lat_long){
         data = subset_data,
         lng = ~Longitude,
         lat = ~Latitude,
-        radius = ~sqrt(`Avg Rumbles`) * 10,  # Adjust the multiplier to change circle sizes
-        popup = ~paste("Site:", Site, "<br>Avg Rumbles:", `Avg Rumbles`),
+        radius = ~sqrt(`Avg Events`) * 10,  # Adjust the multiplier to change circle sizes
+        popup = ~paste("Site:", Site, "<br>Avg Events:", `Avg Events`),
         color = ~color_by_veg(`Vegetation Class`),
         fillOpacity = 0.7,
         group = paste(veg)
       )
   }
 
-  #YEAR MAP - add circle markers for avg rumbles & color by avg rumbles
-  color_by_rumbles <- colorNumeric(palette = "viridis",
-                                   domain = range(ele_year_avg$`Avg Rumbles`))
-  year_map <- leaflet(ele_year_avg) %>%
+  #YEAR MAP - add circle markers for avg Events & color by avg Events
+  color_by_Events <- colorNumeric(palette = "viridis",
+                                   domain = range(event_year_avg$`Avg Events`))
+  year_map <- leaflet(event_year_avg) %>%
 
     #Add default base map
     addProviderTiles(provider = providers$Esri.WorldTopoMap,
                      group = "map") %>%
 
     #Set center point and zoom level
-    setView(lng = mean(ele_year_avg$Longitude),
-            lat = mean(ele_year_avg$Latitude),
+    setView(lng = mean(event_year_avg$Longitude),
+            lat = mean(event_year_avg$Latitude),
             zoom = 10) %>%
 
     #Add legend
     addLegend(
       position = "bottomright",
-      pal = color_by_rumbles,
-      values = ~`Avg Rumbles`,
-      title = "Avg Daily Rumbles"
+      pal = color_by_Events,
+      values = ~`Avg Events`,
+      title = "Avg Daily Events"
     )
 
-  #MONTH MAP - add circle markers for avg rumbles & color by avg rumbles
-  color_by_rumbles <- colorNumeric(palette = "viridis",
-                                   domain = range(ele_month_avg$`Avg Rumbles`))
-  month_map <- leaflet(ele_month_avg) %>%
+  #MONTH MAP - add circle markers for avg Events & color by avg Events
+  color_by_Events <- colorNumeric(palette = "viridis",
+                                   domain = range(event_month_avg$`Avg Events`))
+  month_map <- leaflet(event_month_avg) %>%
 
     #Add default base map
     addProviderTiles(provider = providers$Esri.WorldTopoMap,
                      group = "map") %>%
 
     #Set center point and zoom level
-    setView(lng = mean(ele_month_avg$Longitude),
-            lat = mean(ele_month_avg$Latitude),
+    setView(lng = mean(event_month_avg$Longitude),
+            lat = mean(event_month_avg$Latitude),
             zoom = 10) %>%
 
     #Add legend
     addLegend(
       position = "bottomright",
-      pal = color_by_rumbles,
-      values = ~`Avg Rumbles`,
-      title = "Avg Daily Rumbles"
+      pal = color_by_Events,
+      values = ~`Avg Events`,
+      title = "Avg Daily Events"
     )
 
   #save maps to output list
