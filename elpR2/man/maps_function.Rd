@@ -14,14 +14,14 @@ maps_function(folder_path, site_lat_long)
 \value{
 This function outputs a list containing tables and leaflet maps:
 \itemize{
-\item ele_site_avg: a table summarizing average daily rumbles per site
-\item ele_year_avg: a table summarizing average daily rumbles per site per year
-\item ele_month_avg: a table summarizing average daily rumbles per site per month
-\item default_map: a leaflet map displaying average daily rumbles at each site
-\item strata_map: a leaflet map displaying average daily rumbles at each site, with sites colored by strata
-\item veg_map: a leaflet map displaying average daily rumbles at each site, with sites colored by vegetation class
-\item year_map: a leaflet map with sites colored by average daily rumbles; data intended to be displayed in elpRApp()
-\item month_map: a leaflet map with sites colored by average daily rumbles; data intended to be displayed in elpRApp()
+\item event_site_avg: a table summarizing average daily events per site
+\item event_year_avg: a table summarizing average daily events per site per year
+\item event_month_avg: a table summarizing average daily events per site per month
+\item default_map: a leaflet map displaying average daily events at each site
+\item strata_map: a leaflet map displaying average daily events at each site, with sites colored by strata
+\item veg_map: a leaflet map displaying average daily events at each site, with sites colored by vegetation class
+\item year_map: a leaflet map with sites colored by average daily events; data intended to be displayed in elpRApp()
+\item month_map: a leaflet map with sites colored by average daily events; data intended to be displayed in elpRApp()
 }
 }
 \description{
