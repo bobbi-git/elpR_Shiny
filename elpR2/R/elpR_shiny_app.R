@@ -1823,7 +1823,7 @@ saved_plots(
                  "_",input$summary_detector_in,
                  "_saved_plots.Rds"))
 )
-      )
+      
 
       #display drop-down menu for choosing plots
       removeUI(selector = "#plot_input_div", multiple = TRUE, immediate = TRUE)
