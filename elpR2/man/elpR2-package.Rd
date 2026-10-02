@@ -11,6 +11,11 @@ Tools for processing and analyzing elephant rumble detector output, gunshot dete
 \author{
 \strong{Maintainer}: Bobbi J. Estabrook \email{bobbi.estabrook@cornell.edu}
 
+Authors:
+\itemize{
+  \item Bobbi J. Estabrook \email{bobbi.estabrook@cornell.edu}
+}
+
 Other contributors:
 \itemize{
   \item Jidapa Janpathompong [contributor]

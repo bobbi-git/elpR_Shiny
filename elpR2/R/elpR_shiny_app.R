@@ -176,9 +176,10 @@ elpRApp <- function(){
           card(
             card_header(textOutput("card_1_1")),
             uiOutput("card_1_1_parent_dir"),
-            add_info(textInput("parent_dir_text_in", label = "Or paste the parent folder path", value = ""), "parent_dir"),
-            add_info(shinyDirButton(id = "parent_dir_in", label = NULL, icon = icon("folder-open"), title = "Choose the parent files_for_elpR folder"), "parent_dir"),
+            add_info(shinyDirButton(id = "parent_dir_in", label = NULL, icon = icon("folder-open"), title = "Choose the 'files_for_elpR' folder"), "parent_dir"),
+            add_info(textInput("parent_dir_text_in", label = "Or paste the parent folder path", value = ""), "parent_dir"), # delete if this works ok
             textOutput("parent_dir_recieved"),
+            #add_info(textInput("parent_dir_text_in", label = "Or paste the parent folder path", value = ""), "parent_dir"),
             add_info(textInput("deployment_name_in", label = uiOutput("card_1_1_dep_name"), value = "kk_202405_may"), "deployment_name"),
             add_info(textInput("deployment_num_in", label = uiOutput("card_1_1_dep_num"), value = "02"), "deployment_num"),
             add_info(textInput("disk_ID_in", label = uiOutput("card_1_1_disk_ID"), value = "00"), "disk_ID"),
@@ -1087,18 +1088,18 @@ elpRApp <- function(){
 
     #English & French translations
     card_1_1_eng <- "Input Basic Information"
-    card_1_1_parent_dir_eng <- HTML("<p><b>INPUT 1:</b> Choose the parent files_for_elpR folder</p>")
-    card_1_1_dep_name_eng <- HTML("<p><b>INPUT 1:</b> Deployment name</p>")
-    card_1_1_dep_num_eng <- HTML("<p><b>INPUT 2:</b> Deployment number</p>")
-    card_1_1_disk_ID_eng <- HTML("<p><b>INPUT 3:</b> Disk ID</p>")
-    card_1_1_sites_eng <- HTML("<p><b>INPUT 4:</b> Sites .txt file</p>")
+    card_1_1_parent_dir_eng <- HTML("<p><b>INPUT 1:</b> Choose the files_for_elpR folder</p>")
+    card_1_1_dep_name_eng <- HTML("<p><b>INPUT 2:</b> Deployment name</p>")
+    card_1_1_dep_num_eng <- HTML("<p><b>INPUT 3:</b> Deployment number</p>")
+    card_1_1_disk_ID_eng <- HTML("<p><b>INPUT 4:</b> Disk ID</p>")
+    card_1_1_sites_eng <- HTML("<p><b>INPUT 5:</b> Sites .txt file</p>")
 
     card_1_1_french <- "Saisir des informations de base"
-    card_1_1_parent_dir_french <- HTML("<p><b>ENTRÉE 1:</b> Choisissez le dossier parent files_for_elpR</p>")
-    card_1_1_dep_name_french <- HTML("<p><b>ENTRÉE 1:</b> Nom du déploiement</p>")
-    card_1_1_dep_num_french <- HTML("<p><b>ENTRÉE 2:</b> Numéro de déploiement</p>")
-    card_1_1_disk_ID_french <- HTML("<p><b>ENTRÉE 3:</b> ID de disque</p>")
-    card_1_1_sites_french <- HTML("<p><b>ENTRÉE 4:</b> Fichier .txt des sites</p>")
+    card_1_1_parent_dir_french <- HTML("<p><b>ENTRÉE 1:</b> Choisissez le dossier files_for_elpR</p>")
+    card_1_1_dep_name_french <- HTML("<p><b>ENTRÉE 2:</b> Nom du déploiement</p>")
+    card_1_1_dep_num_french <- HTML("<p><b>ENTRÉE 3:</b> Numéro de déploiement</p>")
+    card_1_1_disk_ID_french <- HTML("<p><b>ENTRÉE 4:</b> ID de disque</p>")
+    card_1_1_sites_french <- HTML("<p><b>ENTRÉE 5:</b> Fichier .txt des sites</p>")
 
     #create list of user inputs
     inputs_basic_info <- reactive({
@@ -1687,6 +1688,7 @@ elpRApp <- function(){
         Fields = c("Project name",
                    "Deployment number(s)",
                    "Detector used",
+                   "Event count column",
                    "Folder containing selection tables",
                    "Folder containing zero-day selection tables",
                    "Use sound check files",

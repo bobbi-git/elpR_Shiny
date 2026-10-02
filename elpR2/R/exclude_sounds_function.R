@@ -79,6 +79,7 @@ sound_exclude_function <- function(
   #### SWIFT FILES ####
   #### rename Swift .txt files by appending folder name as a prefix and automatically move those files to new folder #### This doesn't work if there are no config files
 
+  # rename and move swift files
   if(have_SwiftFiles == "y"){
     print("Renaming and moving swift files...")
     swift_files <-list.files(path=sound_path,
@@ -91,15 +92,9 @@ sound_exclude_function <- function(
     colnames(swift_files) <- "Current File Path"
     swift_files$`Current File Name` <- basename(swift_files$`Current File Path`)#list.files(x,pattern = sound_file_ext,all.files=FALSE,full.names=FALSE,recursive = TRUE,include.dirs=FALSE))
     swift_files$Site <- sub("\\_","",str_extract(swift_files$`Current File Path`,"[a-z]{2}\\d{2}[a-z]{1}."))
-    #swift_files$`Site` <- str_match(swift_files$`Current File Path`,"[a-z]{2}\\d{2}[a-z]{1}_*")[,1]
-    #swift_files$`Site` <- str_match(swift_files$`Current File Path`,"[a-z]{2}\\d{2}(.*?)_")[,1] # strapplyc(swift_files$`Current File Path`,"nn\\d\\d\\D", simplify = TRUE) #   CHECK THAT THIS WILL RENAME SITES WITH EXTRA CHARACTERS (NN019C)
     swift_files$`New File Name` <- paste(swift_files$`Site`,"_",standard_name_disk,"_",swift_files$`Current File Name`,sep="")
     for(l in 1:nrow(swift_files)){
-      #swift_files$`New File Name`[l] <- gsub("\\s*\\([^\\)])",paste("",l,"",sep="_"),as.character(swift_files$`New File Name`[l]))
-      # swift_files$`New File Path`[l] <- gsub(pattern = swift_files$`Current File Name`[l],
-      #                                     replacement = swift_files$`New File Name`[l],
-      #                                     x=swift_files$`Current File Path`[l])
-      swift_files$`New File Path`[l] <- paste(dirname(swift_files$`Current File Path`[l]),swift_files$`New File Name`[l],sep="/")
+      swift_files$`New File Path`[l] <- paste(dirname(swift_files$`Current File Path`[l]),paste(l,swift_files$`New File Name`[l],sep="_"),sep="/")
       }
     for (i in 1:nrow(swift_files)){
       file.rename(swift_files$`Current File Path`[i],swift_files$`New File Path`[i])
@@ -107,7 +102,7 @@ sound_exclude_function <- function(
     swift_path <- swift_files[,"New File Path"] # get the path of each Swift file
 
     # move the swift files from the sound folder to the Swift files folder in the R package folder
-    file.move(swift_path,w,overwrite =TRUE) # move Swift files to folder
+    file.move(swift_path,w,overwrite =TRUE) # move Swift files to folder, but allow for duplicates. Overwrite was set to TRUE
     print("Swift files should have been moved. Check line above to confirm that all files were moved and none failed")
 
     ### merge the swift config files into new file ###
@@ -116,52 +111,77 @@ sound_exclude_function <- function(
       swift_files_dir <- paste(parent_dir, '/swift_files', sep = "")# directory where swift files are (must have "SwiftConfig" as part of file name)
       setwd(swift_files_dir) # can this be removed?
       swift_files <-dir(path=swift_files_dir,all.files=TRUE,include.dirs=TRUE,recursive = TRUE, pattern="Config") # index swift files in SwiftFiles folder are (must have "SwiftConfig" as part of file name)
-      l <- list()
+      # l <- list()
+      #
+      # for (i in 1:length(swift_files)){
+      #   swift_config <- read.table(swift_files[i],header=FALSE,sep="\t", check.names=FALSE,quote="\"") #read each file
+      #   for (j in 1:nrow(swift_config)){
+      #     # for n rows in swift file, sub("\\:.*",swift_config[1,]). Do that for each one and append together. NOT DONE YET
+      #     swift_df <- data.frame(
+      #       assign(paste(sub("\\:.*","",swift_config[1,1]),"",sep=""),sub('.*: ',"",swift_config[1,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[2,1]),"",sep=""),sub('.*: ',"",swift_config[2,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[3,1]),"",sep=""),sub('.*: ',"",swift_config[3,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[4,1]),"",sep=""),sub('.*: ',"",swift_config[4,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[5,1]),"",sep=""),sub('.*: ',"",swift_config[5,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[6,1]),"",sep=""),sub('.*: ',"",swift_config[6,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[7,1]),"",sep=""),sub('.*: ',"",swift_config[7,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[8,1]),"",sep=""),sub('.*: ',"",swift_config[8,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[9,1]),"",sep=""),sub('.*: ',"",swift_config[9,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[10,1]),"",sep=""),sub('.*: ',"",swift_config[10,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[11,1]),"",sep=""),sub('.*: ',"",swift_config[11,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[12,1]),"",sep=""),sub('.*: ',"",swift_config[12,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[13,1]),"",sep=""),sub('.*: ',"",swift_config[13,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[14,1]),"",sep=""),sub('.*: ',"",swift_config[14,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[15,1]),"",sep=""),sub('.*: ',"",swift_config[15,1])),
+      #       assign(paste(sub("\\:.*","",swift_config[15,1]),"",sep=""),sub('.*: ',"",swift_config[16,1])), #
+      #       assign(paste(sub("\\:.*","",swift_config[15,1]),"",sep=""),sub('.*: ',"",swift_config[17,1])), #
+      #       assign(paste(sub("\\:.*","",swift_config[15,1]),"",sep=""),sub('.*: ',"",swift_config[18,1])), #
+      #       assign(paste(sub("\\:.*","",swift_config[15,1]),"",sep=""),sub('.*: ',"",swift_config[19,1])), #
+      #       assign(paste(sub("\\:.*","",swift_config[15,1]),"",sep=""),sub('.*: ',"",swift_config[20,1])), #
+      #       assign(paste(sub("\\:.*","",swift_config[15,1]),"",sep=""),sub('.*: ',"",swift_config[21,1])) #
+      #     )
+      #     colnames(swift_df) <- c(
+      #       paste(sub("\\:.*","",swift_config[1,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[2,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[3,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[4,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[5,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[6,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[7,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[8,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[9,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[10,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[11,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[12,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[13,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[14,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[15,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[16,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[17,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[18,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[19,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[20,1]),"",sep=""),
+      #       paste(sub("\\:.*","",swift_config[21,1]),"",sep="")
+      #     )
+      #     #"Site","Gain", "Sample Rate", "Max File Size", "Schedule","Start Date","Stop Date","Serial Number","Firmware Version")
+      #   }
+      #   l[[i]] <- swift_df
+      # }
+      # swift_merge <- do.call(rbind,l)
+      # #identical(names(l[[1]]), names(l[[13]]) )
 
+      all_configs <- list()
       for (i in 1:length(swift_files)){
-        swift_config <- read.table(swift_files[i],header=FALSE,sep="\t", check.names=FALSE,quote="\"") #read each file
-        for (j in 1:nrow(swift_config)){
-          # for n rows in swift file, sub("\\:.*",swift_config[1,]). Do that for each one and append together. NOT DONE YET
-          swift_df <- data.frame(
-            assign(paste(sub("\\:.*","",swift_config[1,1]),"",sep=""),sub('.*: ',"",swift_config[1,1])),
-            assign(paste(sub("\\:.*","",swift_config[2,1]),"",sep=""),sub('.*: ',"",swift_config[2,1])),
-            assign(paste(sub("\\:.*","",swift_config[3,1]),"",sep=""),sub('.*: ',"",swift_config[3,1])),
-            assign(paste(sub("\\:.*","",swift_config[4,1]),"",sep=""),sub('.*: ',"",swift_config[4,1])),
-            assign(paste(sub("\\:.*","",swift_config[5,1]),"",sep=""),sub('.*: ',"",swift_config[5,1])),
-            assign(paste(sub("\\:.*","",swift_config[6,1]),"",sep=""),sub('.*: ',"",swift_config[6,1])),
-            assign(paste(sub("\\:.*","",swift_config[7,1]),"",sep=""),sub('.*: ',"",swift_config[7,1])),
-            assign(paste(sub("\\:.*","",swift_config[8,1]),"",sep=""),sub('.*: ',"",swift_config[8,1])),
-            assign(paste(sub("\\:.*","",swift_config[9,1]),"",sep=""),sub('.*: ',"",swift_config[9,1])),
-            assign(paste(sub("\\:.*","",swift_config[10,1]),"",sep=""),sub('.*: ',"",swift_config[10,1])),
-            assign(paste(sub("\\:.*","",swift_config[11,1]),"",sep=""),sub('.*: ',"",swift_config[11,1])),
-            assign(paste(sub("\\:.*","",swift_config[12,1]),"",sep=""),sub('.*: ',"",swift_config[12,1])),
-            assign(paste(sub("\\:.*","",swift_config[13,1]),"",sep=""),sub('.*: ',"",swift_config[13,1])),
-            assign(paste(sub("\\:.*","",swift_config[14,1]),"",sep=""),sub('.*: ',"",swift_config[14,1])),
-            assign(paste(sub("\\:.*","",swift_config[15,1]),"",sep=""),sub('.*: ',"",swift_config[15,1]))
-          )
-          colnames(swift_df) <- c(
-            paste(sub("\\:.*","",swift_config[1,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[2,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[3,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[4,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[5,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[6,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[7,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[8,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[9,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[10,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[11,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[12,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[13,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[14,1]),"",sep=""),
-            paste(sub("\\:.*","",swift_config[15,1]),"",sep="")
-          )
-          #"Site","Gain", "Sample Rate", "Max File Size", "Schedule","Start Date","Stop Date","Serial Number","Firmware Version")
-        }
-        l[[i]] <- swift_df
+        lines <- readLines(swift_files[i], warn = FALSE)
+        lines <- lines[nzchar(trimws(lines))]  # drop blank lines, since your file has some
+        keys <- sub("\\:.*", "", lines)
+        vals <- sub('.*: ', "", lines)
+        swift_df <- as.data.frame(t(vals), stringsAsFactors = FALSE)
+        colnames(swift_df) <- keys
+        swift_df$source_file <- basename(swift_files[i])
+        all_configs[[i]] <- swift_df
       }
-      swift_merge <- do.call(rbind,l)
-      #identical(names(l[[1]]), names(l[[13]]) )
+      swift_merge <- dplyr::bind_rows(all_configs)
 
       write.table(swift_merge,file=paste(swift_files_dir,paste(standard_name_disk,"Swift_config_Merge.txt",sep="_"),sep="/"),sep="\t",na="",col.names=TRUE,row.names=FALSE,quote=FALSE)
 
