@@ -194,7 +194,7 @@ data_summaries_function <- function(
 
     # install and load necessary packages
     det_sum_packages <- c("shiny","dplyr", "tidyverse","stringr","purrr","lubridate","readxl","stargazer","broom","ggplot2")
-      options(warn = -1)
+     # options(warn = -1) # turn this on again if warnings are too much
     for (i in det_sum_packages){
       if (!require(i, quietly = TRUE, character.only = TRUE)){
         install.packages(i)

@@ -39,7 +39,6 @@ elpRApp <- function(){
   library(Hmisc) #for loading monthly plots
   library(leaflet)
   library(dplyr) #summarize()
-  library(mapview) #mapshot()
   library(webshot) #mapshot()
   if(webshot::is_phantomjs_installed() == FALSE){
     webshot::install_phantomjs()
@@ -178,7 +177,7 @@ elpRApp <- function(){
             card_header(textOutput("card_1_1")),
             uiOutput("card_1_1_parent_dir"),
             add_info(textInput("parent_dir_text_in", label = "Or paste the parent folder path", value = ""), "parent_dir"),
-            add_info(shinyDirButton(id = "parent_dir_in", label = NULL, icon = icon("folder-open"), title = "Choose the 'files_for_elpR' folder"), "parent_dir"),
+            add_info(shinyDirButton(id = "parent_dir_in", label = NULL, icon = icon("folder-open"), title = "Choose the parent files_for_elpR folder"), "parent_dir"),
             textOutput("parent_dir_recieved"),
             add_info(textInput("deployment_name_in", label = uiOutput("card_1_1_dep_name"), value = "kk_202405_may"), "deployment_name"),
             add_info(textInput("deployment_num_in", label = uiOutput("card_1_1_dep_num"), value = "02"), "deployment_num"),
@@ -375,17 +374,17 @@ elpRApp <- function(){
           card(
             card_header(textOutput("card_1_5")),
 
-add_info(textInput("project_name_in", label = uiOutput("card_1_5_proj"), value = "PNNN"), "project_name"),
-add_info(textInput("deployment_nums_in", label = uiOutput("card_1_5_dep_num"), value = "01-20"), "deployment_num"),
-add_info(selectInput("summary_detector_in", uiOutput("card_1_5_detect"), choices = list("HoriHarm", "FruitPunchAI", "Stanford Detector", "DTDguns8")), "detector_name"),
-add_info(textInput("event_count_column_in", label = uiOutput("card_1_5_event_count"), value = "Count"), "event_count_column"),
-textOutput("card_1_5_out_path"),
-add_info(shinyDirButton(id = "summary_folder_in", label = NULL, icon = icon("folder-open"), title = "Choose folder to output data summaries"), "output"),
+            add_info(textInput("project_name_in", label = uiOutput("card_1_5_proj"), value = "PNNN"), "project_name"),
+            add_info(textInput("deployment_nums_in", label = uiOutput("card_1_5_dep_num"), value = "01-20"), "deployment_num"),
+            add_info(selectInput("summary_detector_in", uiOutput("card_1_5_detect"), choices = list("HoriHarm", "FruitPunchAI", "Stanford Detector", "DTDguns8")), "detector_name"),
+            add_info(textInput("event_count_column_in", label = uiOutput("card_1_5_event_count"), value = "Count"), "event_count_column"),
+            uiOutput("card_1_5_out_path"),
+            add_info(shinyDirButton(id = "summary_folder_in", label = NULL, icon = icon("folder-open"), title = "Choose folder to output data summaries"), "output"),
             textOutput("summary_folder_recieved"),
-            textOutput("card_1_5_tables_path"),
+            uiOutput("card_1_5_tables_path"),
             add_info(shinyDirButton(id = "selection_tables_folder_in", label = NULL, icon = icon("folder-open"), title = "Choose folder containing selection tables"), "ele_tables"),
             textOutput("selection_tables_folder_recieved"),
-            textOutput("card_1_5_zero_path"),
+            uiOutput("card_1_5_zero_path"),
             add_info(shinyDirButton(id = "zero_selection_tables_folder_in", label = NULL, icon = icon("folder-open"), title = "Choose folder containing zero-day selection tables"), "zero_txt"),
             textOutput("zero_selection_tables_folder_recieved")
           ),
@@ -403,7 +402,7 @@ add_info(shinyDirButton(id = "summary_folder_in", label = NULL, icon = icon("fol
             uiOutput("use_only_sites_provided_output"),
             add_info(radioButtons("rand_dates_needed_in", label = textOutput("card_2_5_rand"),
                                   choices = list("Yes", "No"), selected = "No"), "rand_dates_needed"),
-add_info(radioButtons("events_bad_sound_remove_in", label = uiOutput("card_2_5_min_hrs"),
+            add_info(radioButtons("events_bad_sound_remove_in", label = uiOutput("card_2_5_min_hrs"),
                                   choices = list("Yes", "No"), selected = "No"), "events_bad_sound_remove")
           ),
 
@@ -440,9 +439,8 @@ add_info(radioButtons("events_bad_sound_remove_in", label = uiOutput("card_2_5_m
                   card_header(textOutput("card_1_6_1")),
 
                   textOutput("card_1_6_1_path"),
-                  shinyDirButton(id = "saved_plots_folder_in", label = NULL, icon = icon("folder-open"), title = "Choose folder containing .Rds file"),
-                  textOutput("saved_plots_folder_recieved"),
-                  textInput("saved_plots_file_in", label = textOutput("card_1_6_1_rds"), value = "saved_plots.Rds"),
+                  shinyFilesButton(id = "saved_plots_file_in", label = NULL, icon = icon("file"), title = "Choose saved plots .Rds file", multiple = FALSE),
+                  textOutput("saved_plots_file_received"),
                   input_task_button("load_plots", textOutput("card_1_6_1_run")),
                 ),
 
@@ -542,7 +540,7 @@ add_info(radioButtons("events_bad_sound_remove_in", label = uiOutput("card_2_5_m
   #_______________________________________________________________________________
   #### DEFINE SERVER LOGIC ####
 
-  server <- function(input, output) {
+  server <- function(input, output, session) {
     #______________________________________
     ##### header #####
     #render logos
@@ -573,13 +571,13 @@ add_info(radioButtons("events_bad_sound_remove_in", label = uiOutput("card_2_5_m
     output$text_contributers <- renderUI({text_contributers_eng})
 
     output$card_1_1 <- renderText({card_1_1_eng})
-output$card_1_1_parent_dir <- renderUI({card_1_1_parent_dir_eng})
-output$card_1_1_dep_name <- renderUI({card_1_1_dep_name_eng})
-output$card_1_1_dep_num <- renderText({card_1_1_dep_num_eng})
-output$card_1_1_disk_ID <- renderText({card_1_1_disk_ID_eng})
-output$card_1_1_sites <- renderText({card_1_1_sites_eng})
-output$choose_a_folder <- renderText({choose_a_folder_eng})
-output$parent_dir_recieved <- renderText({parent_dir_recieved_eng()})
+    output$card_1_1_parent_dir <- renderUI({card_1_1_parent_dir_eng})
+    output$card_1_1_dep_name <- renderUI({card_1_1_dep_name_eng})
+    output$card_1_1_dep_num <- renderText({card_1_1_dep_num_eng})
+    output$card_1_1_disk_ID <- renderText({card_1_1_disk_ID_eng})
+    output$card_1_1_sites <- renderText({card_1_1_sites_eng})
+    output$choose_a_folder <- renderText({choose_a_folder_eng})
+    output$parent_dir_recieved <- renderText({parent_dir_recieved_eng()})
 
     output$card_1_2 <- renderText({card_1_2_eng})
     output$card_1_2_sound_path <- renderText({card_1_2_sound_path_eng})
@@ -636,14 +634,15 @@ output$parent_dir_recieved <- renderText({parent_dir_recieved_eng()})
     output$card_2_4_3_preview <- renderText({card_2_2_preview_eng})
 
     output$card_1_5 <- renderText({card_1_5_eng})
-output$card_1_5_proj <- renderUI({card_1_5_proj_eng})
-output$card_1_5_dep_num <- renderUI({card_1_5_dep_num_eng})
-output$card_1_5_detect <- renderUI({card_1_5_detect_eng})
-output$card_1_5_event_count <- renderUI({card_1_5_event_count_eng})
-output$card_1_5_out_path <- renderUI({card_1_5_out_path_eng})
-output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
+    output$card_1_5_proj <- renderUI({card_1_5_proj_eng})
+    output$card_1_5_dep_num <- renderUI({card_1_5_dep_num_eng})
+    output$card_1_5_detect <- renderUI({card_1_5_detect_eng})
+    output$card_1_5_event_count <- renderUI({card_1_5_event_count_eng})
+    output$card_1_5_out_path <- renderUI({card_1_5_out_path_eng})
+    output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
+    output$summary_folder_recieved <- renderText({summary_folder_recieved_eng()})
     output$selection_tables_folder_recieved <- renderText({selection_tables_folder_recieved_eng()})
-    output$card_1_5_zero_path <- renderText({card_1_5_zero_path_eng})
+    output$card_1_5_zero_path <- renderUI({card_1_5_zero_path_eng})
     output$zero_selection_tables_folder_recieved <- renderText({zero_selection_tables_folder_recieved_eng()})
     output$card_2_5 <- renderText({card_2_5_eng})
     output$card_2_5_sound_include <- renderText({card_2_5_sound_include_eng})
@@ -668,8 +667,7 @@ output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
     output$tab_6_pill_1 <- renderText({tab_6_pill_1_eng})
     output$card_1_6_1 <- renderText({card_1_6_1_eng})
     output$card_1_6_1_path <- renderText({card_1_6_1_path_eng})
-    output$saved_plots_folder_recieved <- renderText({saved_plots_folder_recieved_eng()})
-    output$card_1_6_1_rds <- renderText({card_1_6_1_rds_eng})
+    output$saved_plots_file_received <- renderText({saved_plots_file_received_eng()})
     output$card_1_6_1_run <- renderText({card_1_6_1_run_eng})
     output$card_1_6_1_message <- renderText({card_1_6_1_message_eng})
     output$card_2_6_1_plot <- renderUI({card_2_6_1_plot_eng})
@@ -800,8 +798,9 @@ output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
       output$card_1_5_event_count <- renderUI({card_1_5_event_count_eng})
       output$card_1_5_out_path <- renderUI({card_1_5_out_path_eng})
       output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
+      output$summary_folder_recieved <- renderText({summary_folder_recieved_eng()})
       output$selection_tables_folder_recieved <- renderText({selection_tables_folder_recieved_eng()})
-      output$card_1_5_zero_path <- renderText({card_1_5_zero_path_eng})
+      output$card_1_5_zero_path <- renderUI({card_1_5_zero_path_eng})
       output$zero_selection_tables_folder_recieved <- renderText({zero_selection_tables_folder_recieved_eng()})
       output$card_2_5 <- renderText({card_2_5_eng})
       output$card_2_5_sound_include <- renderText({card_2_5_sound_include_eng})
@@ -821,8 +820,7 @@ output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
       output$tab_6_pill_1 <- renderText({tab_6_pill_1_eng})
       output$card_1_6_1 <- renderText({card_1_6_1_eng})
       output$card_1_6_1_path <- renderText({card_1_6_1_path_eng})
-      output$saved_plots_folder_recieved <- renderText({saved_plots_folder_recieved_eng()})
-      output$card_1_6_1_rds <- renderText({card_1_6_1_rds_eng})
+      output$saved_plots_file_received <- renderText({saved_plots_file_received_eng()})
       output$card_1_6_1_run <- renderText({card_1_6_1_run_eng})
       output$card_1_6_1_message <- renderText({card_1_6_1_message_eng})
       output$card_2_6_1_plot <- renderUI({card_2_6_1_plot_eng})
@@ -951,8 +949,9 @@ output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
       output$card_1_5_event_count <- renderUI({card_1_5_event_count_french})
       output$card_1_5_out_path <- renderUI({card_1_5_out_path_french})
       output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_french})
+      output$summary_folder_recieved <- renderText({summary_folder_recieved_french()})
       output$selection_tables_folder_recieved <- renderText({selection_tables_folder_recieved_french()})
-      output$card_1_5_zero_path <- renderText({card_1_5_zero_path_french})
+      output$card_1_5_zero_path <- renderUI({card_1_5_zero_path_french})
       output$zero_selection_tables_folder_recieved <- renderText({zero_selection_tables_folder_recieved_french()})
       output$card_2_5 <- renderText({card_2_5_french})
       output$card_2_5_sound_include <- renderText({card_2_5_sound_include_french})
@@ -972,8 +971,7 @@ output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
       output$tab_6_pill_1 <- renderText({tab_6_pill_1_french})
       output$card_1_6_1 <- renderText({card_1_6_1_french})
       output$card_1_6_1_path <- renderText({card_1_6_1_path_french})
-      output$saved_plots_folder_recieved <- renderText({saved_plots_folder_recieved_french()})
-      output$card_1_6_1_rds <- renderText({card_1_6_1_rds_french})
+      output$saved_plots_file_received <- renderText({saved_plots_file_received_french()})
       output$card_1_6_1_run <- renderText({card_1_6_1_run_french})
       output$card_1_6_1_message <- renderText({card_1_6_1_message_french})
       output$card_2_6_1_plot <- renderUI({card_2_6_1_plot_french})
@@ -1083,18 +1081,18 @@ output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
 
     #English & French translations
     card_1_1_eng <- "Input Basic Information"
-    card_1_1_parent_dir_eng <- HTML("<p><b>INPUT 1:</b> Choose the files_for_elpR folder</p>")
-    card_1_1_dep_name_eng <- HTML("<p><b>INPUT 2:</b> Deployment name</p>")
-    card_1_1_dep_num_eng <- HTML("<p><b>INPUT 3:</b> Deployment number</p>")
-    card_1_1_disk_ID_eng <- HTML("<p><b>INPUT 4:</b> Disk ID</p>")
-    card_1_1_sites_eng <- HTML("<p><b>INPUT 5:</b> Sites .txt file</p>")
+    card_1_1_parent_dir_eng <- HTML("<p><b>INPUT 1:</b> Choose the parent files_for_elpR folder</p>")
+    card_1_1_dep_name_eng <- HTML("<p><b>INPUT 1:</b> Deployment name</p>")
+    card_1_1_dep_num_eng <- HTML("<p><b>INPUT 2:</b> Deployment number</p>")
+    card_1_1_disk_ID_eng <- HTML("<p><b>INPUT 3:</b> Disk ID</p>")
+    card_1_1_sites_eng <- HTML("<p><b>INPUT 4:</b> Sites .txt file</p>")
 
     card_1_1_french <- "Saisir des informations de base"
-    card_1_1_parent_dir_french <- HTML("<p><b>ENTRÉE 1:</b> Choisissez le dossier files_for_elpR</p>")
-    card_1_1_dep_name_french <- HTML("<p><b>ENTRÉE 2:</b> Nom du déploiement</p>")
-    card_1_1_dep_num_french <- HTML("<p><b>ENTRÉE 3:</b> Numéro de déploiement</p>")
-    card_1_1_disk_ID_french <- HTML("<p><b>ENTRÉE 4:</b> ID de disque</p>")
-    card_1_1_sites_french <- HTML("<p><b>ENTRÉE 5:</b> Fichier .txt des sites</p>")
+    card_1_1_parent_dir_french <- HTML("<p><b>ENTRÉE 1:</b> Choisissez le dossier parent files_for_elpR</p>")
+    card_1_1_dep_name_french <- HTML("<p><b>ENTRÉE 1:</b> Nom du déploiement</p>")
+    card_1_1_dep_num_french <- HTML("<p><b>ENTRÉE 2:</b> Numéro de déploiement</p>")
+    card_1_1_disk_ID_french <- HTML("<p><b>ENTRÉE 3:</b> ID de disque</p>")
+    card_1_1_sites_french <- HTML("<p><b>ENTRÉE 4:</b> Fichier .txt des sites</p>")
 
     #retrieve folder input path
     shinyDirChoose(input, "parent_dir_in", roots = volumes)
@@ -1186,8 +1184,6 @@ output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
       req(parent_dir_path())
       result <- sound_check_function(
         x = parseDirPath(volumes, input$sound_path_in),
-event_count_column = input$event_count_column_in,
-selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
         deployment_name = input$deployment_name_in,
         deployment_num = input$deployment_num_in,
         disk_ID = input$disk_ID_in,
@@ -1229,7 +1225,7 @@ selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
         shinyjs::show("merge_swift_files_output")
         output$merge_swift_files_output <- renderUI({
           add_info(radioButtons("merge_swift_files_in", label = textOutput("card_1_3_merge_swift"),
-                       choices = list("Yes", "No"), selected = "No"), "merge_swift_files")
+                                choices = list("Yes", "No"), selected = "No"), "merge_swift_files")
         })
       }
       else if(input$have_swift_files_in == "No"){
@@ -1299,7 +1295,7 @@ selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
       }
       result <- sound_exclude_function(
         sound_path = parseDirPath(volumes, input$sound_path_in),
-parent_dir = parent_dir_path(),
+        parent_dir = parent_dir_path(),
         extra_sounds_folder = parseDirPath(volumes, input$extra_sounds_in),
         deployment_name = input$deployment_name_in,
         deployment_num = input$deployment_num_in,
@@ -1406,7 +1402,7 @@ parent_dir = parent_dir_path(),
       }
 
       result <- restructure_rumble_function(
-parent_dir = parent_dir_path(),
+        parent_dir = parent_dir_path(),
         deployment_name = input$deployment_name_in,
         deployment_num = input$deployment_num_in,
         disk_ID = input$disk_ID_in,
@@ -1491,7 +1487,7 @@ parent_dir = parent_dir_path(),
     observeEvent(input$run_gun_restructure_in, {
       req(parent_dir_path())
       result <- restructure_gunshot_function(
-parent_dir = parent_dir_path(),
+        parent_dir = parent_dir_path(),
         deployment_name = input$deployment_name_in,
         deployment_num = input$deployment_num_in,
         disk_ID = input$disk_ID_in,
@@ -1523,7 +1519,7 @@ parent_dir = parent_dir_path(),
     card_1_4_3_french <- "Saisir les Informations General"
     card_1_4_3_path_french <- "Choisissez le dossier contenant les tables de sélection à fusionner: "
     card_1_4_3_recur_french <- radioButtons("recursive_in", label = "Comment les tableaux de sélection sont-ils organisés?",
-                                         choices = list("Dans un dossier", "Dans plusieurs sous-dossiers"))
+                                            choices = list("Dans un dossier", "Dans plusieurs sous-dossiers"))
     card_2_4_3_french <- "Exécuter General Restructure"
 
     #retrieve folder input path
@@ -1578,12 +1574,13 @@ parent_dir = parent_dir_path(),
 
     #English & French translations
     card_1_5_eng <- "Input Data Summaries Information"
-card_1_5_proj_eng <- HTML("<p><b>INPUT 1:</b> Project name</p>")
-card_1_5_dep_num_eng <- HTML("<p><b>INPUT 2:</b> Deployment number(s)</p>")
-card_1_5_detect_eng <- HTML("<p><b>INPUT 3:</b> Detector used</p>")
-card_1_5_event_count_eng <- HTML("<p><b>INPUT 4:</b> Event-count column name</p>")
-card_1_5_tables_path_eng <- HTML("<p><b>INPUT 5:</b> Choose folder containing selection tables</p>")
-card_1_5_zero_path_eng <- HTML("<p><b>INPUT 6:</b> Choose folder containing zero-day selection tables</p>")
+    card_1_5_proj_eng <- HTML("<p><b>INPUT 1:</b> Project name</p>")
+    card_1_5_dep_num_eng <- HTML("<p><b>INPUT 2:</b> Deployment number(s)</p>")
+    card_1_5_detect_eng <- HTML("<p><b>INPUT 3:</b> Detector used</p>")
+    card_1_5_event_count_eng <- HTML("<p><b>INPUT 4:</b> Event-count column name</p>")
+    card_1_5_out_path_eng <- HTML("<p><b>INPUT 5:</b> Choose folder to output data summaries</p>")
+    card_1_5_tables_path_eng <- HTML("<p><b>INPUT 6:</b> Choose folder containing selection tables</p>")
+    card_1_5_zero_path_eng <- HTML("<p><b>INPUT 7:</b> Choose folder containing zero-day selection tables</p>")
     card_2_5_eng <- "Input OPTIONAL Data Summaries Information"
     card_2_5_sound_include_eng <- "Do you want to include a sound check file?"
     card_2_5_sound_path_eng <- "Choose folder containing sound check files: "
@@ -1594,12 +1591,13 @@ card_1_5_zero_path_eng <- HTML("<p><b>INPUT 6:</b> Choose folder containing zero
     card_3_5_eng <- "Run Data Summaries"
 
     card_1_5_french <- "Saisir les Informations Data Summaries"
-card_1_5_proj_french <- HTML("<p><b>ENTRÉE 1:</b> Nom du projet</p>")
-card_1_5_dep_num_french <- HTML("<p><b>ENTRÉE 2:</b> Numéro(s) de déploiement</p>")
-card_1_5_detect_french <- HTML("<p><b>ENTRÉE 3:</b> Détecteur utilisé</p>")
-card_1_5_event_count_french <- HTML("<p><b>ENTRÉE 4:</b> Nom de la colonne de comptage des événements</p>")
-card_1_5_tables_path_french <- HTML("<p><b>ENTRÉE 5:</b> Choisissez le dossier contenant les tables de sélection</p>")
-card_1_5_zero_path_french <- HTML("<p><b>ENTRÉE 6:</b> Choisissez le dossier contenant les tables de sélection zero-day</p>")
+    card_1_5_proj_french <- HTML("<p><b>ENTRÉE 1:</b> Nom du projet</p>")
+    card_1_5_dep_num_french <- HTML("<p><b>ENTRÉE 2:</b> Numéro(s) de déploiement</p>")
+    card_1_5_detect_french <- HTML("<p><b>ENTRÉE 3:</b> Détecteur utilisé</p>")
+    card_1_5_event_count_french <- HTML("<p><b>ENTRÉE 4:</b> Nom de la colonne de comptage des événements</p>")
+    card_1_5_out_path_french <- HTML("<p><b>ENTRÉE 5:</b> Choisissez le dossier de sortie des résumés de données</p>")
+    card_1_5_tables_path_french <- HTML("<p><b>ENTRÉE 6:</b> Choisissez le dossier contenant les tables de sélection</p>")
+    card_1_5_zero_path_french <- HTML("<p><b>ENTRÉE 7:</b> Choisissez le dossier contenant les tables de sélection zero-day</p>")
     card_2_5_french <- "Saisir les informations facultatives Data Summaries"
     card_2_5_sound_include_french <- "Souhaitez-vous inclure un fichier de Sound Check?"
     card_2_5_sound_path_french <- "Choisissez le dossier contenant les fichiers de Sound Check: "
@@ -1671,8 +1669,9 @@ card_1_5_zero_path_french <- HTML("<p><b>ENTRÉE 6:</b> Choisissez le dossier co
         project_name = input$project_name_in,
         deployment_num = input$deployment_nums_in,
         detector_name = input$summary_detector_in,
-event_count_column = input$event_count_column_in,
-selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
+        event_count_column = input$event_count_column_in,
+        output = parseDirPath(volumes, input$summary_folder_in),
+        selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
         zero_txt = parseDirPath(volumes, input$zero_selection_tables_folder_in),
         sound_check_include = input$sound_check_include_in,
         sound_checks = sound_check_folder_value,
@@ -1707,7 +1706,7 @@ selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
                    "Project name",
                    "Deployment number(s)",
                    "Detector used",
-                   "Event count column",
+                   "Event-count column name",
                    "Folder to output summaries",
                    "Folder containing selection tables",
                    "Folder containing zero-day selection tables",
@@ -1751,12 +1750,12 @@ selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
       }
 
       result <- data_summaries_function(
-parent_dir = parent_dir_path(),
-project_name = input$project_name_in,
-deployment_num = input$deployment_nums_in,
-detector_name = input$summary_detector_in,
-event_count_column = input$event_count_column_in,
-selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
+        parent_dir = parent_dir_path(),
+        project_name = input$project_name_in,
+        deployment_num = input$deployment_nums_in,
+        detector_name = input$summary_detector_in,
+        event_count_column = input$event_count_column_in,
+        selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
         zero_txt = parseDirPath(volumes, input$zero_selection_tables_folder_in),
         sound_check_include = sound_check_include_value,
         sound_checks = sound_check_folder_value,
@@ -1778,8 +1777,7 @@ selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
     #English & French translations
     tab_6_pill_1_eng <- "Plots"
     card_1_6_1_eng <- "Input File Information"
-    card_1_6_1_path_eng <- "Choose folder containing .Rds file with saved plots: "
-    card_1_6_1_rds_eng <- "Name of .Rds file: "
+    card_1_6_1_path_eng <- "Select saved plots .Rds file: "
     card_1_6_1_run_eng <- "Load Plots"
     card_1_6_1_message_eng <- "Loading plots..."
     card_2_6_1_plot_eng <- HTML("<p><b>Plot Options</b></p>")
@@ -1793,8 +1791,7 @@ selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
 
     tab_6_pill_1_french <- "Graphiques"
     card_1_6_1_french <- "Informations sur le fichier d'entrée"
-    card_1_6_1_path_french <- "Choisissez le dossier contenant le fichier .Rds: "
-    card_1_6_1_rds_french <- "Nom du fichier .Rds: "
+    card_1_6_1_path_french <- "Sélectionnez le fichier .Rds des graphiques enregistrés: "
     card_1_6_1_run_french <- "Charger des Graphiques"
     card_1_6_1_message_french <- "Chargement des graphiques..."
     card_2_6_1_plot_french <- HTML("<p><b>Options de Graphique</b></p>")
@@ -1806,25 +1803,69 @@ selection_tables = parseDirPath(volumes, input$selection_tables_folder_in),
     card_2_6_1_format_french <- "Format de fichier à télécharger: "
     card_2_6_1_save_french <- "Télécharger"
 
-    #retrieve folder input path
-    shinyDirChoose(input, "saved_plots_folder_in", roots = volumes)
-    saved_plots_folder_recieved_eng <- reactive({paste("Path recieved: ", parseDirPath(volumes, input$saved_plots_folder_in))})
-    saved_plots_folder_recieved_french <- reactive({paste("Chemin reçu: ", parseDirPath(volumes, input$saved_plots_folder_in))})
+    #retrieve selected saved-plots file
+    shinyFileChoose(
+      input,
+      "saved_plots_file_in",
+      roots = volumes,
+      session = session,
+      filetypes = c("Rds", "rds", "RDS")
+    )
+    saved_plots_file_received_eng <- reactive({
+      if (is.null(input$saved_plots_file_in)) {
+        return("No file selected")
+      }
+      selected_file <- parseFilePaths(volumes, input$saved_plots_file_in)
+      if (nrow(selected_file) == 0) "" else selected_file$datapath[[1]]
+    })
+    saved_plots_file_received_french <- reactive({
+      if (is.null(input$saved_plots_file_in)) {
+        return("Aucun fichier sélectionné")
+      }
+      selected_file <- parseFilePaths(volumes, input$saved_plots_file_in)
+      if (nrow(selected_file) == 0) "" else selected_file$datapath[[1]]
+    })
 
     #load plots from data summaries
     saved_plots <- reactiveVal({})
     observeEvent(input$load_plots, {
-req(parent_dir_path())
-#load plots into environment from user inputted file path
-saved_plots(
-  readRDS(paste0(parent_dir_path(),
-                 "/data_summaries/summary_plots/",
-                 input$project_name_in,
-                 "_dep",input$deployment_nums_in,
-                 "_",input$summary_detector_in,
-                 "_saved_plots.Rds"))
-)
-      
+      req(input$saved_plots_file_in)
+      selected_file <- parseFilePaths(volumes, input$saved_plots_file_in)
+      if (nrow(selected_file) != 1) {
+        showNotification(
+          "Please select one saved plots .Rds file.",
+          type = "error",
+          duration = NULL
+        )
+        return()
+      }
+      saved_plots_path <- selected_file$datapath[[1]]
+      if (!file.exists(saved_plots_path)) {
+        showNotification(
+          paste("Saved plots file not found:", saved_plots_path),
+          type = "error",
+          duration = NULL
+        )
+        return()
+      }
+
+      plots <- tryCatch(
+        readRDS(saved_plots_path),
+        error = function(error) {
+          message("Failed to load saved plots: ", conditionMessage(error))
+          showNotification(
+            paste("Failed to load saved plots:", conditionMessage(error)),
+            type = "error",
+            duration = NULL
+          )
+          NULL
+        }
+      )
+      if (is.null(plots)) {
+        return()
+      }
+      saved_plots(plots)
+
 
       #display drop-down menu for choosing plots
       removeUI(selector = "#plot_input_div", multiple = TRUE, immediate = TRUE)
@@ -1865,7 +1906,7 @@ saved_plots(
           ui = div(
             id = "facet_wrap_input_div",
             selectInput("facet_wrap_input", label = textOutput("card_2_6_1_facet"),
-              choices = list("Default", "Site", "Strata", "Vegetation Class"), selected = "Default")
+                        choices = list("Default", "Site", "Strata", "Vegetation Class"), selected = "Default")
           )
         )
       }
@@ -1889,7 +1930,7 @@ saved_plots(
           ui = div(
             id = "night_annot_input_div",
             selectInput("night_annot_input", label = textOutput("card_2_6_1_night"),
-              choices = list("Default", "Night Rumbles"), selected = "Default")
+                        choices = list("Default", "Night Rumbles"), selected = "Default")
           )
         )
       }
@@ -1913,7 +1954,7 @@ saved_plots(
           ui = div(
             id = "overlay_input_div",
             selectInput("overlay_input", label = textOutput("card_2_6_1_overlay"),
-              choices = list("Default", "Overlay"), selected = "Default")
+                        choices = list("Default", "Overlay"), selected = "Default")
           )
         )
       }
@@ -2094,30 +2135,26 @@ saved_plots(
     saved_tables_folder_recieved_french <- reactive({paste("Chemin reçu: ", parseDirPath(volumes, input$saved_tables_folder_in))})
 
     #load plots from data summaries
-    tables_for_mapping <- reactiveVal(list())
+    maps_function_output <- reactiveVal(list())
     observeEvent(input$load_tables, {
-req(parent_dir_path())
-req(input$site_lat_long_map)
-
-#run maps_function
-result <- tryCatch(
-  maps_function(
-    folder_path = paste0(parent_dir_path(),
-                         "/data_summaries/summary_tables/"),
-    site_lat_long = input$site_lat_long_map$datapath
-  ),
-  error = function(error) {
-    message("Maps failed: ", conditionMessage(error))
-    showNotification(
-      paste("Maps failed:", conditionMessage(error)),
-      type = "error",
-      duration = NULL
-    )
-    NULL
-  }
-)
-req(result)
-maps_function_output(result)
+      req(input$saved_tables_folder_in, input$site_lat_long_map)
+      result <- tryCatch(
+        maps_function(
+          folder_path = parseDirPath(volumes, input$saved_tables_folder_in),
+          site_lat_long = input$site_lat_long_map$datapath
+        ),
+        error = function(error) {
+          message("Maps failed: ", conditionMessage(error))
+          showNotification(
+            paste("Maps failed:", conditionMessage(error)),
+            type = "error",
+            duration = NULL
+          )
+          NULL
+        }
+      )
+      req(result)
+      maps_function_output(result)
 
       #display drop-down menu for choosing maps
       removeUI(selector = "#map_input_div", multiple = TRUE, immediate = TRUE)
@@ -2127,7 +2164,7 @@ maps_function_output(result)
         ui = div(
           id = "map_input_div",
           selectInput("map_input", label = textOutput("card_2_6_2_map_input"),
-            choices = list("Default", "Strata", "Vegetation Class", "Year", "Month"), selected = NULL)
+                      choices = list("Default", "Strata", "Vegetation Class", "Year", "Month"), selected = NULL)
         )
       )
     })
@@ -2147,10 +2184,10 @@ maps_function_output(result)
       #display drop-down menus
       if(input$map_input == "Year"){
 
-req(maps_function_output())
-req(maps_function_output()$event_year_avg)
+        req(maps_function_output())
+        req(maps_function_output()$event_year_avg)
 
-ele_year_avg <- maps_function_output()$event_year_avg
+        ele_year_avg <- maps_function_output()$event_year_avg
         years_vector <- sort(unique(ele_year_avg$Year))
 
         insertUI(
@@ -2159,16 +2196,16 @@ ele_year_avg <- maps_function_output()$event_year_avg
           ui = div(
             id = "year_slider_input_div",
             sliderInput("year_slider_input", label = textOutput("card_2_6_2_year"),
-              min = min(years_vector), max = max(years_vector), value = min(years_vector), step = 1)
+                        min = min(years_vector), max = max(years_vector), value = min(years_vector), step = 1)
           )
         )
       }
       if(input$map_input == "Month"){
 
-req(maps_function_output())
-req(maps_function_output()$event_month_avg)
+        req(maps_function_output())
+        req(maps_function_output()$event_month_avg)
 
-ele_month_avg <- maps_function_output()$event_month_avg
+        ele_month_avg <- maps_function_output()$event_month_avg
         months_vector <- sort(unique(ele_month_avg$Month))
 
         insertUI(
@@ -2177,7 +2214,7 @@ ele_month_avg <- maps_function_output()$event_month_avg
           ui = div(
             id = "month_slider_input_div",
             sliderInput("month_slider_input", label = textOutput("card_2_6_2_month"),
-              min = min(months_vector), max = max(months_vector), value = min(months_vector), step = 1)
+                        min = min(months_vector), max = max(months_vector), value = min(months_vector), step = 1)
           )
         )
       }
@@ -2185,10 +2222,10 @@ ele_month_avg <- maps_function_output()$event_month_avg
 
     #select maps based on drop-down menu selections
     display_this_map <- reactive({
-ele_site_avg <- maps_function_output()$event_site_avg
+      ele_site_avg <- maps_function_output()$event_site_avg
       #choose map to display based on user's drop-down selections
       if(input$map_input == "Default"){
-        ele_site_avg <- tables_for_mapping()$ele_site_avg
+        ele_site_avg <- maps_function_output()$event_site_avg
         m <- m %>%
 
           #Add markers
@@ -2203,7 +2240,7 @@ ele_site_avg <- maps_function_output()$event_site_avg
         #View map
         m
       } else if(input$map_input == "Strata"){
-        ele_site_avg <- tables_for_mapping()$ele_site_avg
+        ele_site_avg <- maps_function_output()$event_site_avg
         if(!is.null(ele_site_avg$Strata)){
           color_by_strata <- colorFactor(palette = "viridis",
                                          domain = unique(ele_site_avg$Strata))
@@ -2245,7 +2282,7 @@ ele_site_avg <- maps_function_output()$event_site_avg
           NULL
         }
       } else if(input$map_input == "Vegetation Class"){
-        ele_site_avg <- tables_for_mapping()$ele_site_avg
+        ele_site_avg <- maps_function_output()$event_site_avg
         if(!is.null(ele_site_avg$`Vegetation Class`)){
           color_by_veg <- colorFactor(palette = "plasma",
                                       domain = unique(ele_site_avg$`Vegetation Class`))
@@ -2287,13 +2324,13 @@ ele_site_avg <- maps_function_output()$event_site_avg
           NULL
         }
       } else if(input$map_input == "Year"){
-ele_year_avg <- maps_function_output()$event_year_avg
-color_by_Events <- colorNumeric(palette = "viridis",
-                                         domain = range(ele_year_avg$`Avg Events`))
+        ele_year_avg <- maps_function_output()$event_year_avg
+        color_by_Events <- colorNumeric(palette = "viridis",
+                                        domain = range(ele_year_avg$`Avg Events`))
 
-          #Add default base map
-          addProviderTiles(provider = providers$Esri.WorldTopoMap,
-                           group = "map") %>%
+        #Add default base map
+        addProviderTiles(provider = providers$Esri.WorldTopoMap,
+                         group = "map") %>%
 
           #Set center point and zoom level
           setView(lng = mean(ele_year_avg$Longitude),
@@ -2324,13 +2361,13 @@ color_by_Events <- colorNumeric(palette = "viridis",
         #View map
         m
       } else if(input$map_input == "Month"){
-ele_month_avg <- maps_function_output()$event_month_avg
-color_by_Events <- colorNumeric(palette = "viridis",
-                                         domain = range(ele_month_avg$`Avg Events`))
+        ele_month_avg <- maps_function_output()$event_month_avg
+        color_by_Events <- colorNumeric(palette = "viridis",
+                                        domain = range(ele_month_avg$`Avg Events`))
 
-          #Add default base map
-          addProviderTiles(provider = providers$Esri.WorldTopoMap,
-                           group = "map") %>%
+        #Add default base map
+        addProviderTiles(provider = providers$Esri.WorldTopoMap,
+                         group = "map") %>%
 
           #Set center point and zoom level
           setView(lng = mean(ele_month_avg$Longitude),
@@ -2412,14 +2449,14 @@ color_by_Events <- colorNumeric(palette = "viridis",
     #select data tables to display based on drop-down menu selections
     display_this_df <- reactive({
       if(input$map_input == "Default"){
-maps_function_output()$event_site_avg
-      } else if(input$map_input == "Strata"){ 
         maps_function_output()$event_site_avg
-      } else if(input$map_input == "Vegetation Class"){ 
+      } else if(input$map_input == "Strata"){
         maps_function_output()$event_site_avg
-      } else if(input$map_input == "Year"){ 
+      } else if(input$map_input == "Vegetation Class"){
+        maps_function_output()$event_site_avg
+      } else if(input$map_input == "Year"){
         maps_function_output()$event_year_avg
-      } else if(input$map_input == "Month"){ 
+      } else if(input$map_input == "Month"){
         maps_function_output()$event_month_avg
       }
     })
@@ -2714,10 +2751,10 @@ maps_function_output()$event_site_avg
 
     #maps_documentation
     maps_help <- reactive({
-temp_html_eng = tempfile(fileext = ".html")
-temp_html_french = tempfile(fileext = ".html")
-html_content_eng = HTML(
-  "<h2>Map Results</h2>
+      temp_html_eng = tempfile(fileext = ".html")
+      temp_html_french = tempfile(fileext = ".html")
+      html_content_eng = HTML(
+        "<h2>Map Results</h2>
   <h3>Description</h3>
   <p>This page displays maps using data generated by the Data Summaries function.
   First, select the folder containing your Data Summaries output, and load in the data.
@@ -2735,8 +2772,8 @@ html_content_eng = HTML(
   </ul>
   <h3>Author(s)</h3>
   <p>Jidapa Janpathompong</p>")
-html_content_french = HTML(
-  "<h2>Résultats de la Carte</h2>
+      html_content_french = HTML(
+        "<h2>Résultats de la Carte</h2>
   <h3>Description</h3>
   <p>Cette page affiche des cartes réalisées à partir des données générées par la fonction Data Summaries.
   Sélectionnez d'abord le dossier contenant les données générées par la fonction Data Summaries, puis chargez-y les données.
@@ -2754,8 +2791,8 @@ html_content_french = HTML(
   </ul>
   <h3>Auteurs</h3>
   <p>Jidapa Janpathompong</p>")
-cat(html_content_eng, file = temp_html_eng)
-cat(html_content_french, file = temp_html_french)
+      cat(html_content_eng, file = temp_html_eng)
+      cat(html_content_french, file = temp_html_french)
       list(
         html_path_eng = temp_html_eng,
         html_path_french = temp_html_french,
