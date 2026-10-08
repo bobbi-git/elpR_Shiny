@@ -2222,183 +2222,69 @@ elpRApp <- function(){
 
     #select maps based on drop-down menu selections
     display_this_map <- reactive({
-      ele_site_avg <- maps_function_output()$event_site_avg
-      #choose map to display based on user's drop-down selections
-      if(input$map_input == "Default"){
-        ele_site_avg <- maps_function_output()$event_site_avg
-        m <- m %>%
+      map_results <- maps_function_output()
+      req(map_results, input$map_input)
 
-          #Add markers
-          addCircleMarkers(
-            lng = ~Longitude,
-            lat = ~Latitude,
-            radius = ~sqrt(`Avg Rumbles`) * 10,  # Adjust the multiplier to change circle sizes
-            popup = ~paste("Site:", Site, "<br>Avg Rumbles:", `Avg Rumbles`),
-            fillOpacity = 0.7
-          )
-
-        #View map
-        m
-      } else if(input$map_input == "Strata"){
-        ele_site_avg <- maps_function_output()$event_site_avg
-        if(!is.null(ele_site_avg$Strata)){
-          color_by_strata <- colorFactor(palette = "viridis",
-                                         domain = unique(ele_site_avg$Strata))
-          m <- m %>%
-
-            #Add legend
-            addLegend(
-              position = "bottomright",
-              pal = color_by_strata,
-              values = ~Strata,
-              title = "Strata"
-            ) %>%
-
-            #Add layers control
-            addLayersControl(overlayGroups = unique(ele_site_avg$Strata),
-                             position = "topleft")
-
-          #Add markers
-          for(strata in unique(ele_site_avg$Strata)){
-            subset_data <- ele_site_avg %>%
-              filter(Strata == strata)
-
-            m <- m %>%
-              addCircleMarkers(
-                data = subset_data,
-                lng = ~Longitude,
-                lat = ~Latitude,
-                radius = ~sqrt(`Avg Rumbles`) * 10,  # Adjust the multiplier to change circle sizes
-                popup = ~paste("Site:", Site, "<br>Avg Rumbles:", `Avg Rumbles`),
-                color = ~color_by_strata(Strata),
-                fillOpacity = 0.7,
-                group = paste(strata)
-              )
-          }
-
-          #View map
-          m
-        } else{
-          NULL
-        }
-      } else if(input$map_input == "Vegetation Class"){
-        ele_site_avg <- maps_function_output()$event_site_avg
-        if(!is.null(ele_site_avg$`Vegetation Class`)){
-          color_by_veg <- colorFactor(palette = "plasma",
-                                      domain = unique(ele_site_avg$`Vegetation Class`))
-          m <- m %>%
-
-            #Add legend
-            addLegend(
-              position = "bottomright",
-              pal = color_by_veg,
-              values = ~`Vegetation Class`,
-              title = "Vegetation Class"
-            ) %>%
-
-            #Add layers control
-            addLayersControl(overlayGroups = unique(ele_site_avg$`Vegetation Class`),
-                             position = "topleft")
-
-          #Add markers
-          for(veg in unique(ele_site_avg$`Vegetation Class`)){
-            subset_data <- ele_site_avg %>%
-              filter(`Vegetation Class` == veg)
-
-            m <- m %>%
-              addCircleMarkers(
-                data = subset_data,
-                lng = ~Longitude,
-                lat = ~Latitude,
-                radius = ~sqrt(`Avg Rumbles`) * 10,  # Adjust the multiplier to change circle sizes
-                popup = ~paste("Site:", Site, "<br>Avg Rumbles:", `Avg Rumbles`),
-                color = ~color_by_veg(`Vegetation Class`),
-                fillOpacity = 0.7,
-                group = paste(veg)
-              )
-          }
-
-          #View map
-          m
-        } else{
-          NULL
-        }
-      } else if(input$map_input == "Year"){
-        ele_year_avg <- maps_function_output()$event_year_avg
-        color_by_Events <- colorNumeric(palette = "viridis",
-                                        domain = range(ele_year_avg$`Avg Events`))
-
-        #Add default base map
-        addProviderTiles(provider = providers$Esri.WorldTopoMap,
-                         group = "map") %>%
-
-          #Set center point and zoom level
-          setView(lng = mean(ele_year_avg$Longitude),
-                  lat = mean(ele_year_avg$Latitude),
-                  zoom = 10) %>%
-
-          #Add legend
-          addLegend(
-            position = "bottomright",
-            pal = color_by_rumbles,
-            values = ~`Avg Rumbles`,
-            title = "Avg Daily Rumbles"
-          ) %>%
-
-          #Add markers
-          addCircleMarkers(
-            data = ele_year_avg %>%
-              filter(Year == input$year_slider_input),
-            lng = ~Longitude,
-            lat = ~Latitude,
-            radius = ~sqrt(`Avg Events`) * 8,  # Adjust the multiplier to change circle sizes
-            popup = ~paste("Site:", Site, "<br>Avg Events:", `Avg Events`),
-            color = ~color_by_Events(`Avg Events`),
-            fillOpacity = 0.7,
-            group = paste(input$year_slider_input)
-          )
-
-        #View map
-        m
-      } else if(input$map_input == "Month"){
-        ele_month_avg <- maps_function_output()$event_month_avg
-        color_by_Events <- colorNumeric(palette = "viridis",
-                                        domain = range(ele_month_avg$`Avg Events`))
-
-        #Add default base map
-        addProviderTiles(provider = providers$Esri.WorldTopoMap,
-                         group = "map") %>%
-
-          #Set center point and zoom level
-          setView(lng = mean(ele_month_avg$Longitude),
-                  lat = mean(ele_month_avg$Latitude),
-                  zoom = 10) %>%
-
-          #Add legend
-          addLegend(
-            position = "bottomright",
-            pal = color_by_rumbles,
-            values = ~`Avg Rumbles`,
-            title = "Avg Daily Rumbles"
-          ) %>%
-
-          #Add markers
-          addCircleMarkers(
-            data = ele_month_avg %>%
-              filter(Month == input$month_slider_input),
-            lng = ~Longitude,
-            lat = ~Latitude,
-            radius = ~sqrt(`Avg Events`) * 8,  # Adjust the multiplier to change circle sizes
-            popup = ~paste("Site:", Site,
-                           "<br>Avg Events:", `Avg Events`),
-            color = ~color_by_Events(`Avg Events`),
-            fillOpacity = 0.7,
-            group = paste(input$month_slider_input)
-          )
-
-        #View map
-        m
+      if (input$map_input == "Default") {
+        return(map_results$default_map)
       }
+      if (input$map_input == "Strata") {
+        if (is.null(map_results$event_site_avg$Strata)) {
+          return(NULL)
+        }
+        return(map_results$strata_map)
+      }
+      if (input$map_input == "Vegetation Class") {
+        if (is.null(map_results$event_site_avg$`Vegetation Class`)) {
+          return(NULL)
+        }
+        return(map_results$veg_map)
+      }
+      if (input$map_input == "Year") {
+        req(input$year_slider_input)
+        year_data <- map_results$event_year_avg
+        color_by_events <- colorNumeric(
+          palette = "viridis",
+          domain = range(year_data$`Avg Events`, na.rm = TRUE)
+        )
+        return(
+          map_results$year_map %>%
+            addCircleMarkers(
+              data = year_data %>%
+                filter(Year == input$year_slider_input),
+              lng = ~Longitude,
+              lat = ~Latitude,
+              radius = ~sqrt(`Avg Events`) * 8,
+              popup = ~paste("Site:", Site, "<br>Avg Events:", `Avg Events`),
+              color = ~color_by_events(`Avg Events`),
+              fillOpacity = 0.7,
+              group = paste(input$year_slider_input)
+            )
+        )
+      }
+      if (input$map_input == "Month") {
+        req(input$month_slider_input)
+        month_data <- map_results$event_month_avg
+        color_by_events <- colorNumeric(
+          palette = "viridis",
+          domain = range(month_data$`Avg Events`, na.rm = TRUE)
+        )
+        return(
+          map_results$month_map %>%
+            addCircleMarkers(
+              data = month_data %>%
+                filter(Month == input$month_slider_input),
+              lng = ~Longitude,
+              lat = ~Latitude,
+              radius = ~sqrt(`Avg Events`) * 8,
+              popup = ~paste("Site:", Site, "<br>Avg Events:", `Avg Events`),
+              color = ~color_by_events(`Avg Events`),
+              fillOpacity = 0.7,
+              group = paste(input$month_slider_input)
+            )
+        )
+      }
+      NULL
     })
 
     #display maps!
