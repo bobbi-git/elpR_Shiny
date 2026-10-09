@@ -1486,7 +1486,8 @@ elpRApp <- function(){
     #BUTTON: run gun restructure
     observeEvent(input$run_gun_restructure_in, {
       req(parent_dir_path())
-      result <- restructure_gunshot_function(
+      result <- tryCatch(
+        restructure_gunshot_function(
         parent_dir = parent_dir_path(),
         deployment_name = input$deployment_name_in,
         deployment_num = input$deployment_num_in,
@@ -1496,7 +1497,21 @@ elpRApp <- function(){
         Detector = input$detector_gun_in,
         Detector_ScoreThreshold = input$detector_score_gun_in,
         Filter_ScoreThreshold = input$filter_score_gun_in
+    ),
+    error = function(error) {
+      message("Gunshot restructure failed: ", conditionMessage(error))
+      showNotification(
+        paste("Gunshot restructure failed:", conditionMessage(error)),
+        type = "error",
+        duration = NULL
       )
+      output$run_gun_restructure_output <- renderTable(NULL)
+      NULL
+    }
+    )
+if (is.null(result)) {
+  return()
+}
       gunshot_count <- c(sum(as.integer(result[,3]), na.rm = TRUE))
       gunshot_type <- c("Gunshots")
       output$run_gun_restructure_output <- renderTable({
