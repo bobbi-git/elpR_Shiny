@@ -70,7 +70,31 @@ restructure_rumble_function()
 restructure_gunshot_function()
 restructure_general_function()
 data_summaries_function()
+detector_performance_function()
 maps_function()
+```
+
+`detector_performance_function()` compares detector selection tables with
+truth selection tables only during the site-specific periods in a tab-delimited
+schedule. Its schedule columns are `Begin Date`, `Begin Time`, `End Date`,
+`End Time`, and `Site`. Tables must include `Begin File`, `Begin Time (s)`,
+`End Time (s)`, and `File Offset (s)`; detector tables must also include a
+numeric score column (default: `Score`). Recording filenames must include a
+`YYYYMMDD_HHMMSS` timestamp. The function returns precision, recall, F1, and
+false positives per scheduled recording hour for the requested score
+thresholds.
+
+For example, after loading the truth and detector tables into lists:
+
+``` r
+performance <- detector_performance_function(
+  truth_tables,
+  det_tables,
+  schedule_path = "path/to/schedule.txt",
+  score_column = "Confidence",
+  score_thresholds = seq(0.1, 0.99, by = 0.01)
+)
+performance$metrics
 ```
 
 Function documentation for elpR2 can be viewed in the “HELP” tab within

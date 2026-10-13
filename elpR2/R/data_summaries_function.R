@@ -194,7 +194,6 @@ data_summaries_function <- function(
 
     # install and load necessary packages
     det_sum_packages <- c("shiny","dplyr", "tidyverse","stringr","purrr","lubridate","readxl","stargazer","broom","ggplot2")
-      options(warn = -1)
     for (i in det_sum_packages){
       if (!require(i, quietly = TRUE, character.only = TRUE)){
         install.packages(i)
@@ -202,14 +201,50 @@ data_summaries_function <- function(
       }
     }
 
-   # Define helper to not kill function if saving fails
+    # Save plots to a temporary file before replacing the existing output.
     safe_ggsave <- function(filename, plot, ...) {
-      tryCatch(
-        ggsave(filename, plot = plot, ...),
-        error = function(e) {
-          warning("ggsave failed for ", filename, ": ", conditionMessage(e))
-        }
-      )
+       temporary_file <- tempfile(
+         pattern = ".plot-",
+         tmpdir = dirname(filename),
+         fileext = ".png"
+       )
+       backup_file <- NULL
+       on.exit(unlink(temporary_file), add = TRUE)
+
+       ggsave(temporary_file, plot = plot, ...)
+       if (!file.exists(temporary_file) ||
+           is.na(file.info(temporary_file)$size) ||
+           file.info(temporary_file)$size == 0) {
+         stop("Plot image was not written successfully: ", filename)
+       }
+
+       if (file.exists(filename)) {
+         backup_file <- tempfile(
+           pattern = ".plot-backup-",
+           tmpdir = dirname(filename),
+           fileext = ".png"
+         )
+         if (!file.rename(filename, backup_file)) {
+           stop("Could not preserve the existing plot image: ", filename)
+         }
+       }
+
+       if (!file.rename(temporary_file, filename)) {
+         if (!is.null(backup_file) && !file.rename(backup_file, filename)) {
+           stop(
+             "Could not install the new plot image or restore its previous version: ",
+             filename,
+             ". Previous image is at: ",
+             backup_file
+           )
+         }
+         stop("Could not install the completed plot image: ", filename)
+       }
+
+       if (!is.null(backup_file)) {
+         unlink(backup_file)
+       }
+       invisible(filename)
     }
 
     normalize_detection_table <- function(table, event_count_column, file_path = NA_character_) {
@@ -1267,7 +1302,10 @@ data_summaries_function <- function(
   }
 
   # Write all plots into an .Rds file
-  saveRDS(save_list, paste0(parent_dir,"/data_summaries/summary_plots/",proj_dep_name,"_saved_plots.Rds"))
+  saveRDS(
+    save_list,
+    paste0(parent_dir,"/data_summaries/summary_plots/",proj_dep_name,"_saved_plots.Rds")
+  )
 
   # Save each plot in the list as a separate PNG file
   for (plot_name in names(save_list)) {

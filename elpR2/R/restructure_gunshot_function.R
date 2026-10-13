@@ -67,6 +67,7 @@ restructure_gunshot_function <- function(
 
   print("Running restructure_gunshot_function...")
   og_dir <- getwd() #to reset wd at the end of the function
+  on.exit(setwd(og_dir), add = TRUE)
 
   # install and load necessary packages
   sel_table_struct <- c("plyr","dplyr","ggplot2","bigreadr","openxlsx","stringr","gsubfn","lubridate","filesstrings")
