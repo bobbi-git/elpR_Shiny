@@ -84,6 +84,11 @@ numeric score column (default: `Score`). Recording filenames must include a
 false positives per scheduled recording hour for the requested score
 thresholds.
 
+When run from section 7 of the Shiny app, choose an output folder. Each
+analysis creates a uniquely named `detector_performance_*` subfolder there
+containing tab-delimited `metrics.tsv`, `truth_events.tsv`,
+`detector_events.tsv`, and `schedule.tsv` files.
+
 For example, after loading the truth and detector tables into lists:
 
 ``` r

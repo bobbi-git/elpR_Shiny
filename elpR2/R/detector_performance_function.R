@@ -180,23 +180,25 @@ detector_performance_function <- function(
     merged_schedule$End, merged_schedule$Start, units = "hours"
   )))
   scheduled_overlap_seconds <- function(site, start, end) {
+    start_seconds <- as.numeric(start)
+    end_seconds <- as.numeric(end)
+    period_starts <- as.numeric(merged_schedule$Start)
+    period_ends <- as.numeric(merged_schedule$End)
     periods <- merged_schedule[
       merged_schedule$Site == site &
-        merged_schedule$Start < end &
-        merged_schedule$End > start,
+        period_starts < end_seconds &
+        period_ends > start_seconds,
       ,
       drop = FALSE
     ]
     if (nrow(periods) == 0L) {
       return(0)
     }
+    period_starts <- as.numeric(periods$Start)
+    period_ends <- as.numeric(periods$End)
     sum(pmax(
       0,
-      as.numeric(difftime(
-        pmin(end, periods$End),
-        pmax(start, periods$Start),
-        units = "secs"
-      ))
+      pmin(end_seconds, period_ends) - pmax(start_seconds, period_starts)
     ))
   }
 
@@ -326,13 +328,17 @@ detector_performance_function <- function(
     detections <- which(test_events$Score >= threshold)
     matched_test <- logical(length(detections))
     matched_truth <- logical(nrow(truth_events))
+    truth_start_seconds <- as.numeric(truth_events$Start)
+    truth_end_seconds <- as.numeric(truth_events$End)
 
-    for (j in seq_along(detections)) {
-      detection <- test_events[detections[j], , drop = FALSE]
+    for (detection_index in seq_along(detections)) {
+      detection <- test_events[detections[detection_index], , drop = FALSE]
+      detection_start_seconds <- as.numeric(detection$Start)
+      detection_end_seconds <- as.numeric(detection$End)
       candidates <- which(
         truth_events$Site == detection$Site &
-          truth_events$Start < detection$End &
-          truth_events$End > detection$Start
+          truth_start_seconds < detection_end_seconds &
+          truth_end_seconds > detection_start_seconds
       )
       if (!is.null(class_column)) {
         candidates <- candidates[truth_events$Class[candidates] == detection$Class]
@@ -341,14 +347,12 @@ detector_performance_function <- function(
         overlap <- vapply(candidates, function(candidate) {
           scheduled_overlap_seconds(
             detection$Site,
-            max(detection$Start, truth_events$Start[candidate]),
-            min(detection$End, truth_events$End[candidate])
+            max(detection_start_seconds, truth_start_seconds[candidate]),
+            min(detection_end_seconds, truth_end_seconds[candidate])
           )
         }, numeric(1))
-        detection_duration <- as.numeric(difftime(detection$End, detection$Start, units = "secs"))
-        truth_duration <- as.numeric(difftime(
-          truth_events$End[candidates], truth_events$Start[candidates], units = "secs"
-        ))
+        detection_duration <- detection_end_seconds - detection_start_seconds
+        truth_duration <- truth_end_seconds[candidates] - truth_start_seconds[candidates]
         detection_percent <- ifelse(detection_duration > 0, 100 * overlap / detection_duration, 0)
         truth_percent <- ifelse(truth_duration > 0, 100 * overlap / truth_duration, 0)
         matched <- overlap > 0 & (
@@ -356,7 +360,7 @@ detector_performance_function <- function(
             truth_percent >= min_overlap_percent
         )
         if (any(matched)) {
-          matched_test[j] <- TRUE
+          matched_test[detection_index] <- TRUE
           matched_truth[candidates[matched]] <- TRUE
         }
       }

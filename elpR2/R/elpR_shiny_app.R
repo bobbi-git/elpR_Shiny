@@ -533,6 +533,14 @@ add_info(radioButtons("events_bad_sound_remove_in", label = uiOutput("card_2_5_m
               title = "Choose folder containing detector selection tables"
             ),
             textOutput("performance_test_path"),
+            p(textOutput("performance_output_label")),
+            shinyDirButton(
+              id = "performance_output_dir",
+              label = NULL,
+              icon = icon("folder-open"),
+              title = "Choose folder for detector performance results"
+            ),
+            textOutput("performance_output_path"),
             fileInput("performance_schedule", textOutput("performance_schedule_label"),
                       accept = c(".txt", ".tsv")),
             textInput("performance_score_column", textOutput("performance_score_column_label"),
@@ -541,7 +549,8 @@ add_info(radioButtons("events_bad_sound_remove_in", label = uiOutput("card_2_5_m
                          value = 0.5),
             numericInput("performance_min_overlap", textOutput("performance_overlap_label"),
                          value = 0, min = 0, max = 100),
-            actionButton("run_performance", textOutput("performance_run_label"))
+            input_task_button("run_performance", textOutput("performance_run_label")),
+            textOutput("performance_status")
           ),
           card(
             card_header(textOutput("performance_results_header")),
@@ -584,6 +593,8 @@ add_info(radioButtons("events_bad_sound_remove_in", label = uiOutput("card_2_5_m
   #### DEFINE SERVER LOGIC ####
 
   server <- function(input, output, session) {
+    volumes <- getVolumes()()
+
     #______________________________________
     ##### header #####
     #render logos
@@ -760,6 +771,9 @@ output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
     output$performance_test_label <- renderText({
       if (translate_val() == 0) "Detector selection tables folder" else "Dossier des tables de sélection du détecteur"
     })
+    output$performance_output_label <- renderText({
+      if (translate_val() == 0) "Choose an output folder for performance results" else "Choisissez un dossier de sortie pour les résultats"
+    })
     output$performance_schedule_label <- renderText({
       if (translate_val() == 0) "Schedule file (.txt)" else "Fichier de calendrier (.txt)"
     })
@@ -778,6 +792,8 @@ output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
     output$performance_results_header <- renderText({
       if (translate_val() == 0) "Performance Metrics" else "Mesures de performance"
     })
+    performance_status <- reactiveVal("")
+    output$performance_status <- renderText(performance_status())
     output$performance_truth_path <- renderText({
       if (is.null(input$performance_truth_dir)) return("")
       selected <- if (translate_val() == 0) "Selected:" else "Sélectionné :"
@@ -787,6 +803,11 @@ output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
       if (is.null(input$performance_test_dir)) return("")
       selected <- if (translate_val() == 0) "Selected:" else "Sélectionné :"
       paste(selected, parseDirPath(volumes, input$performance_test_dir))
+    })
+    output$performance_output_path <- renderText({
+      if (is.null(input$performance_output_dir)) return("")
+      selected <- if (translate_val() == 0) "Selected:" else "Sélectionné :"
+      paste(selected, parseDirPath(volumes, input$performance_output_dir))
     })
     performance_result <- reactiveVal(NULL)
     output$performance_metrics <- DT::renderDataTable({
@@ -805,10 +826,12 @@ output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
 
     shinyDirChoose(input, "performance_truth_dir", roots = volumes)
     shinyDirChoose(input, "performance_test_dir", roots = volumes)
+    shinyDirChoose(input, "performance_output_dir", roots = volumes)
     observeEvent(input$run_performance, {
       req(
         input$performance_truth_dir,
         input$performance_test_dir,
+        input$performance_output_dir,
         input$performance_schedule,
         input$performance_score_column,
         input$performance_threshold,
@@ -816,23 +839,91 @@ output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
       )
       truth_path <- parseDirPath(volumes, input$performance_truth_dir)
       test_path <- parseDirPath(volumes, input$performance_test_dir)
-      req(nzchar(truth_path), nzchar(test_path))
+      output_path <- parseDirPath(volumes, input$performance_output_dir)
+      req(nzchar(truth_path), nzchar(test_path), nzchar(output_path))
 
-      result <- tryCatch(
-        detector_performance_function(
-          truth_tables = truth_path,
-          test_tables = test_path,
-          schedule_path = input$performance_schedule$datapath,
-          score_column = input$performance_score_column,
-          score_thresholds = input$performance_threshold,
-          min_overlap_percent = input$performance_min_overlap
-        ),
-        error = function(error) {
-          showNotification(conditionMessage(error), type = "error")
-          NULL
+      performance_status(if (translate_val() == 0) {
+        "Performance analysis is running..."
+      } else {
+        "L'analyse de performance est en cours..."
+      })
+      result <- withProgress(
+        message = if (translate_val() == 0) {
+          "Running detector performance analysis"
+        } else {
+          "Analyse des performances du détecteur en cours"
+        },
+        detail = if (translate_val() == 0) "Preparing selection tables..." else "Préparation des tables...",
+        value = 0,
+        {
+          incProgress(0.05)
+          tryCatch(
+            {
+              result <- detector_performance_function(
+                truth_tables = truth_path,
+                test_tables = test_path,
+                schedule_path = input$performance_schedule$datapath,
+                score_column = input$performance_score_column,
+                score_thresholds = input$performance_threshold,
+                min_overlap_percent = input$performance_min_overlap
+              )
+              run_folder <- tempfile(
+                pattern = paste0(
+                  "detector_performance_",
+                  format(Sys.time(), "%Y%m%d_%H%M%S"),
+                  "_"
+                ),
+                tmpdir = output_path
+              )
+              if (!dir.create(run_folder)) {
+                stop("Could not create detector performance output folder in: ", output_path)
+              }
+              output_tables <- c(
+                metrics = "metrics.tsv",
+                truth_events = "truth_events.tsv",
+                test_events = "detector_events.tsv",
+                schedule = "schedule.tsv"
+              )
+              for (table_name in names(output_tables)) {
+                utils::write.table(
+                  result[[table_name]],
+                  file = file.path(run_folder, output_tables[[table_name]]),
+                  sep = "\t",
+                  row.names = FALSE,
+                  quote = FALSE,
+                  na = ""
+                )
+              }
+              result$output_dir <- run_folder
+              result
+            },
+            error = function(error) {
+              message("Detector performance analysis or saving failed: ", conditionMessage(error))
+              showNotification(
+                paste("Performance analysis or saving failed:", conditionMessage(error)),
+                type = "error",
+                duration = NULL
+              )
+              NULL
+            }
+          )
         }
       )
+      if (is.null(result)) {
+        performance_status(if (translate_val() == 0) {
+          "Analysis or saving failed. See the error notification."
+        } else {
+          "L'analyse ou l'enregistrement a échoué. Consultez la notification d'erreur."
+        })
+        performance_result(NULL)
+        return()
+      }
       performance_result(result)
+      performance_status(if (translate_val() == 0) {
+        paste("Performance analysis completed. Results saved to:", result$output_dir)
+      } else {
+        paste("Analyse terminée. Résultats enregistrés dans :", result$output_dir)
+      })
     })
 
     #BUTTON: translate to English
@@ -1189,9 +1280,6 @@ output$card_1_5_tables_path <- renderUI({card_1_5_tables_path_eng})
 
     #______________________________________
     ##### definitions #####
-
-    #needed for retrieving folder input paths
-    volumes = getVolumes()()
 
     #______________________________________
     ##### 1. Basic Info #####
