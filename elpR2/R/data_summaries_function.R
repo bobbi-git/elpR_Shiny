@@ -347,20 +347,6 @@ data_summaries_function <- function(
         library(i, character.only = TRUE)
       }
     }
-    if(!is.null(recording_effort) && use_only_sites_provided == "y"){
-      recording_effort <- recording_effort %>%
-        dplyr::filter(Site %in% site_lat_long$Site)
-    }
-    if(!is.null(recording_effort)){
-      analysis_site_dates <- events_dets_df_zero %>%
-        dplyr::distinct(Site, Date)
-      recording_effort <- dplyr::semi_join(
-        recording_effort,
-        analysis_site_dates,
-        by = c("Site", "Date")
-      )
-    }
-
     # Save plots to a temporary file before replacing the existing output.
     safe_ggsave <- function(filename, plot, ...) {
        temporary_file <- tempfile(
@@ -736,6 +722,15 @@ data_summaries_function <- function(
   # remove any sites that aren't in the user provided Site list (e.g., cluster analysis sites (nn09c1, nn09c2, nn09c3, nn09c4, etc))
   if(use_only_sites_provided == "y"){
     events_hrly <- events_hrly[(events_hrly$Site %in% unique(site_lat_long$Site)),]
+  }
+  if(!is.null(recording_effort)){
+    analysis_site_dates <- events_hrly %>%
+      dplyr::distinct(Site, Date)
+    recording_effort <- dplyr::semi_join(
+      recording_effort,
+      analysis_site_dates,
+      by = c("Site", "Date")
+    )
   }
   #unique(events_hrly$Site)
   #sum(events_hrly$`Sum Events`,na.rm=T) #36236
