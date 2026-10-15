@@ -1821,7 +1821,7 @@ card_1_5_zero_path_eng <- HTML("<p><b>INPUT 7:</b> Choose folder containing zero
     card_2_5_sites_include_eng <- "Do you only want to include sites listed in a sites file?"
     card_2_5_sites_eng <- "Sites .txt file with latitude and longitude: "
     card_2_5_rand_eng <- "Do you need random dates?"
-    card_2_5_min_hrs_eng <- "Do you want to exclude sounds <23 hours?"
+    card_2_5_min_hrs_eng <- "Exclude site-days with <23 recorded hours? (requires sound-check files)"
     card_3_5_eng <- "Run Data Summaries"
 
     card_1_5_french <- "Saisir les Informations Data Summaries"
@@ -1838,7 +1838,7 @@ card_1_5_zero_path_french <- HTML("<p><b>ENTRÉE 7:</b> Choisissez le dossier co
     card_2_5_sites_include_french <- "Souhaitez-vous inclure uniquement les sites répertoriés dans un fichier de sites?"
     card_2_5_sites_french <- "Fichier .txt des sites contenant la latitude et la longitude: "
     card_2_5_rand_french <- "Avez-vous besoin de dates aléatoires?"
-    card_2_5_min_hrs_french <- "Souhaitez-vous exclure les sons de moins de 23 heures?"
+    card_2_5_min_hrs_french <- "Exclure les jours-sites avec moins de 23 heures enregistrées? (fichiers Sound Check requis)"
     card_3_5_french <- "Exécuter Data Summaries"
 
     #retrieve folder input paths
@@ -1927,6 +1927,10 @@ card_1_5_zero_path_french <- HTML("<p><b>ENTRÉE 7:</b> Choisissez le dossier co
         if(input$sound_check_include_in == "Yes"){
           need(input$sound_check_folder_in, "Do you want to include a sound check file?")
         },
+        if(input$events_bad_sound_remove_in == "Yes"){
+          need(input$sound_check_include_in == "Yes",
+               "Sound-check files are required to exclude site-days with less than 23 recorded hours.")
+        },
         if(input$use_only_sites_provided_in == "Yes"){
           need(input$sites_lat_long_in, "Do you want to include a sites file?")
         }
@@ -1949,7 +1953,7 @@ card_1_5_zero_path_french <- HTML("<p><b>ENTRÉE 7:</b> Choisissez le dossier co
                    "Use sites file",
                    "Sites file with latitude and longitude",
                    "Random dates needed",
-                   "Exclude sounds <23 hours"),
+                   "Exclude site-days with <23 recorded hours"),
         Inputs = y
       )
     }, hover = TRUE) |>

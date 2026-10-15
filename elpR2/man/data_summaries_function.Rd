@@ -45,7 +45,7 @@ data_summaries_function(
 
 \item{rand_dates_needed}{If you want 3 random days per week (y/n) *dates are pre-selected in the /rand-days/Rand_dates.csv file}
 
-\item{events_bad_sound_remove}{If you want to exclude sounds with less than 23 hrs of sound (y/n)}
+\item{events_bad_sound_remove}{If you want to exclude site-days with less than 23 recorded hours (y/n)}
 }
 \value{
 This function outputs:
@@ -81,6 +81,9 @@ This function outputs:
 \item total_Events
 \item n_hours: Total hours sampled for the date
 \item n_valid_hours: Total valid hours sampled for the date
+\item recording_hours: Valid recording duration for the site and calendar date
+\item events_per_recording_hour: Events divided by recorded hours
+\item events_per_24_recorded_hours: Events per recording hour scaled to 24 hours
 \item night_total: Total nighttime Events for the date
 \item prop_night: Proportion of nighttime Events to all Events for the date
 \item prop_day: Proportion of daytime Events to all Events for the date
@@ -110,6 +113,9 @@ This function outputs:
 \item PropNightEvents: Proportion of nighttime Events to all Events for the week
 \item SumEventsPerDaysSampled: Total daytime Events for the week
 \item SumNightEventsPerDaySampled: Nighttime Events divided by number of days per week
+\item recording_hours: Total valid recording hours in the week
+\item events_per_recording_hour: Events divided by recorded hours
+\item events_per_24_recorded_hours: Events per recording hour scaled to 24 hours
 }
 \item Monthly summary tables include:
 \itemize{
@@ -125,6 +131,9 @@ This function outputs:
 \item sumNightEvents: Total number of nighttime Events for the month
 \item meanNightEvents: Mean number of nighttime Events for the month
 \item proportionNightEvents: Proportion of nighttime Events to all Events for the month
+\item recording_hours: Total valid recording hours in the month
+\item events_per_recording_hour: Events divided by recorded hours
+\item events_per_24_recorded_hours: Events per recording hour scaled to 24 hours
 \item Year-Month: WeekDate
 }
 }
@@ -148,6 +157,15 @@ This function outputs:
 }
 }
 }
+}
+\details{
+When sound-check files are included, files marked "y" are excluded from
+detections and recording effort. Recording effort is calculated as the union of
+valid recording intervals within each site and calendar day. Files marked "e"
+are retained unless \code{events_bad_sound_remove = "y"}, which excludes site-days
+with less than 23 recorded hours. The daily site summary and weekly/monthly
+summary tables include recording hours and effort-adjusted event rates.
+Existing event-count plots retain their original scales.
 }
 \description{
 This function summarizes data from the annotated selection tables, the sound check files, and the zero-days selection tables into hourly, daily, weekly, and monthly time periods.

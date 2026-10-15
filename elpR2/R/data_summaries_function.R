@@ -16,9 +16,125 @@
 # updated: Sept 2023
 
 ## TO DO ##
-# plot mean Events per sampled date to account for sampling effort
+# add plots using the effort-adjusted event-rate columns
 # enable option for gunshot tables? Or just just one detector folder instead
 # remove dates that are not listed in sound check file? (optional) - shouldn't this already be happening by only marking 'good' dates from Event SSTs?
+
+.calculate_daily_recording_effort <- function(sound_checks,
+                                              timezone = "Africa/Brazzaville") {
+  required_columns <- c(
+    "Site", "File Name", "File Start DateTime", "File Duration (s)",
+    "Exclude (y/e)"
+  )
+  missing_columns <- setdiff(required_columns, names(sound_checks))
+  if (length(missing_columns) > 0) {
+    stop(
+      "Sound-check data is missing required columns: ",
+      paste(missing_columns, collapse = ", ")
+    )
+  }
+
+  exclude_code <- toupper(trimws(as.character(sound_checks$`Exclude (y/e)`)))
+  exclude_code[is.na(exclude_code)] <- ""
+  unknown_codes <- setdiff(unique(exclude_code), c("", "N", "E", "Y"))
+  if (length(unknown_codes) > 0) {
+    stop(
+      "Sound-check data contains unsupported Exclude (y/e) codes: ",
+      paste(unknown_codes, collapse = ", ")
+    )
+  }
+
+  valid_checks <- sound_checks[exclude_code != "Y", , drop = FALSE]
+  valid_starts <- valid_checks$`File Start DateTime`
+  durations <- as.numeric(valid_checks$`File Duration (s)`)
+  if (anyNA(valid_checks$Site) ||
+      any(!nzchar(trimws(as.character(valid_checks$Site))))) {
+    stop("Sound-check rows not marked 'y' must have a Site value.")
+  }
+  if (anyNA(valid_checks$`File Name`) ||
+      any(!nzchar(trimws(as.character(valid_checks$`File Name`))))) {
+    stop("Sound-check rows not marked 'y' must have a File Name value.")
+  }
+  if (anyNA(valid_starts) || any(!is.finite(durations)) || any(durations <= 0)) {
+    stop(
+      "Sound-check rows not marked 'y' must have valid file start times and ",
+      "positive, finite File Duration (s) values to calculate recording effort."
+    )
+  }
+
+  if (nrow(valid_checks) == 0) {
+    return(data.frame(
+      Site = character(),
+      Date = as.Date(character()),
+      recording_hours = numeric()
+    ))
+  }
+
+  interval_segments <- vector("list", nrow(valid_checks))
+  for (i in seq_len(nrow(valid_checks))) {
+    interval_start <- as.numeric(valid_starts[i])
+    interval_end <- interval_start + durations[i]
+    current_date <- as.Date(valid_starts[i], tz = timezone)
+    final_date <- as.Date(
+      as.POSIXct(interval_end - 1e-6, origin = "1970-01-01", tz = timezone),
+      tz = timezone
+    )
+    file_segments <- list()
+
+    while (current_date <= final_date) {
+      day_start <- as.numeric(as.POSIXct(
+        paste(current_date, "00:00:00"),
+        tz = timezone
+      ))
+      next_day_start <- as.numeric(as.POSIXct(
+        paste(current_date + 1, "00:00:00"),
+        tz = timezone
+      ))
+      segment_start <- max(interval_start, day_start)
+      segment_end <- min(interval_end, next_day_start)
+      if (segment_end > segment_start) {
+        file_segments[[length(file_segments) + 1L]] <- data.frame(
+          Site = as.character(valid_checks$Site[i]),
+          Date = current_date,
+          interval_start = segment_start,
+          interval_end = segment_end
+        )
+      }
+      current_date <- current_date + 1
+    }
+    interval_segments[[i]] <- do.call(rbind, file_segments)
+  }
+
+  segments <- do.call(rbind, interval_segments)
+  group_indices <- split(
+    seq_len(nrow(segments)),
+    interaction(segments$Site, segments$Date, drop = TRUE)
+  )
+  effort_by_site_date <- lapply(group_indices, function(indices) {
+    site_date_segments <- segments[indices, , drop = FALSE]
+    site_date_segments <- site_date_segments[
+      order(site_date_segments$interval_start, site_date_segments$interval_end),
+      ,
+      drop = FALSE
+    ]
+    cumulative_interval_end <- cummax(site_date_segments$interval_end)
+    previous_interval_end <- c(
+      site_date_segments$interval_start[1],
+      cumulative_interval_end[seq_len(length(cumulative_interval_end) - 1L)]
+    )
+    covered_seconds <- pmax(
+      0,
+      site_date_segments$interval_end -
+        pmax(site_date_segments$interval_start, previous_interval_end)
+    )
+    data.frame(
+      Site = site_date_segments$Site[1],
+      Date = site_date_segments$Date[1],
+      recording_hours = min(24, sum(covered_seconds) / 3600)
+    )
+  })
+  do.call(rbind, effort_by_site_date)
+}
 
 #' @title Data Summaries
 #' @author Bobbi J. Estabrook <bobbi.estabrook@cornell.edu>
@@ -45,7 +161,14 @@
 #' @param use_only_sites_provided If you want to include only the sites listed in a site_lat_long file (y/n)
 #' @param site_lat_long A .txt file containing site names with latitude, longitude, vegetation class (optional), strata (optional): See existing files in the "elpR/Files/sites" folder for required structure of .txt file
 #' @param rand_dates_needed If you want 3 random days per week (y/n) *dates are pre-selected in the /rand-days/Rand_dates.csv file
-#' @param events_bad_sound_remove If you want to exclude sounds with less than 23 hrs of sound (y/n)
+#' @param events_bad_sound_remove If you want to exclude site-days with less than 23 recorded hours (y/n)
+#' @details When sound-check files are included, files marked "y" are excluded from
+#' detections and recording effort. Recording effort is calculated as the union of
+#' valid recording intervals within each site and calendar day. Files marked "e"
+#' are retained unless \code{events_bad_sound_remove = "y"}, which excludes site-days
+#' with less than 23 recorded hours. The daily site summary and weekly/monthly
+#' summary tables include recording hours and effort-adjusted event rates.
+#' Existing event-count plots retain their original scales.
 #'
 #' @return
 #' This function outputs:
@@ -81,6 +204,9 @@
 #'    \item total_Events
 #'    \item n_hours: Total hours sampled for the date
 #'    \item n_valid_hours: Total valid hours sampled for the date
+#'    \item recording_hours: Valid recording duration for the site and calendar date
+#'    \item events_per_recording_hour: Events divided by recorded hours
+#'    \item events_per_24_recorded_hours: Events per recording hour scaled to 24 hours
 #'    \item night_total: Total nighttime Events for the date
 #'    \item prop_night: Proportion of nighttime Events to all Events for the date
 #'    \item prop_day: Proportion of daytime Events to all Events for the date
@@ -110,6 +236,9 @@
 #'    \item PropNightEvents: Proportion of nighttime Events to all Events for the week
 #'    \item SumEventsPerDaysSampled: Total daytime Events for the week
 #'    \item SumNightEventsPerDaySampled: Nighttime Events divided by number of days per week
+#'    \item recording_hours: Total valid recording hours in the week
+#'    \item events_per_recording_hour: Events divided by recorded hours
+#'    \item events_per_24_recorded_hours: Events per recording hour scaled to 24 hours
 #'    }
 #'  \item Monthly summary tables include:
 #'    \itemize{
@@ -125,6 +254,9 @@
 #'    \item sumNightEvents: Total number of nighttime Events for the month
 #'    \item meanNightEvents: Mean number of nighttime Events for the month
 #'    \item proportionNightEvents: Proportion of nighttime Events to all Events for the month
+#'    \item recording_hours: Total valid recording hours in the month
+#'    \item events_per_recording_hour: Events divided by recorded hours
+#'    \item events_per_24_recorded_hours: Events per recording hour scaled to 24 hours
 #'    \item Year-Month: WeekDate
 #'    }
 #' }
@@ -150,7 +282,6 @@
 #' }
 #'
 #' @export
-
 data_summaries_function <- function(
     parent_dir,
     project_name,
@@ -169,6 +300,22 @@ data_summaries_function <- function(
 
   print("Running data_summaries_function...")
   og_dir <- getwd() #to reset wd at the end of the function
+  on.exit(setwd(og_dir), add = TRUE)
+
+  if (events_bad_sound_remove == "y" && sound_check_include != "y") {
+    stop(
+      "Sound-check files are required to exclude site-days with less than ",
+      "23 recorded hours."
+    )
+  }
+  if (use_only_sites_provided == "y" && is.null(site_lat_long)) {
+    stop("A sites table is required when use_only_sites_provided is 'y'.")
+  }
+  has_zero_days <- !is.null(zero_txt) && length(zero_txt) == 1L &&
+    nzchar(zero_txt)
+  if (has_zero_days && !dir.exists(zero_txt)) {
+    stop("Zero-days folder does not exist: ", zero_txt)
+  }
 
     graphics.off()  # close all plot devices
     gc()            # collect garbage
@@ -199,6 +346,19 @@ data_summaries_function <- function(
         install.packages(i)
         library(i, character.only = TRUE)
       }
+    }
+    if(!is.null(recording_effort) && use_only_sites_provided == "y"){
+      recording_effort <- recording_effort %>%
+        dplyr::filter(Site %in% site_lat_long$Site)
+    }
+    if(!is.null(recording_effort)){
+      analysis_site_dates <- events_dets_df_zero %>%
+        dplyr::distinct(Site, Date)
+      recording_effort <- dplyr::semi_join(
+        recording_effort,
+        analysis_site_dates,
+        by = c("Site", "Date")
+      )
     }
 
     # Save plots to a temporary file before replacing the existing output.
@@ -272,6 +432,7 @@ data_summaries_function <- function(
   proj_dep_name <-paste(project_name,"_dep",deployment_num,"_",detector_name,sep="") #default raw output table name
 
   #### LOAD IN ALL DATA ####
+  recording_effort <- NULL
 
   ##### Sound Check Files #####
     # Should read in excel tables, not .txt files since those aren't frequently updated
@@ -280,6 +441,9 @@ data_summaries_function <- function(
                                      recursive=T,
                                      full.names=TRUE,
                                      pattern = "*.xlsx") # list all the selection tables in the selection_tables folder
+      if(length(sound_check_list) == 0){
+        stop("No .xlsx sound-check files were found in: ", sound_checks)
+      }
       #sound_check_list <- lapply(sound_check_list, function(x) {read.table(file = x, header = T, sep ="\t", check.names=FALSE,quote = "\"",comment.char = "")})  # Read the files in, assuming tab separator
       #sound_check_list <- rapply(sound_check_list, as.character, how = "replace") #make all columns character types before merging
       #sound_check_merge_df <- do.call("rbind", lapply(sound_check_list_df, as.data.frame)) # Combine them (the events cross over between sites and cuts off the last site - use the rbind.fill function)
@@ -299,10 +463,10 @@ data_summaries_function <- function(
       sound_check_merge_df <- dplyr::bind_rows(sound_check_list_df) # merge all sound check files together
       cols.nums <- c("Duration Hours",'File Duration (s)',"SampleRate")
       sound_check_merge_df[cols.nums] <- sapply(sound_check_merge_df[cols.nums],as.numeric) # set specific columns as numeric
-      sound_check_merge_df$`File Start DateTime` <- as.POSIXct(str_extract(sound_check_merge_df$`Current File Name`,"\\d{8}.\\d{6}"),format='%Y%m%d_%H%M%S',origin = "1970-01-01",tz="Africa/Brazzaville") # convert the data and time charaters to real date and time with the correct time zone
-      sound_check_merge_df$`File Start Date` <- format(as.Date(str_extract(sound_check_merge_df$'Current File Name' ,"\\d{8}.\\d{6}"),"%Y%m%d"),"%m/%d/%Y")
+      sound_check_merge_df$`File Start DateTime` <- as.POSIXct(str_extract(sound_check_merge_df$`Current File Name`,"\\d{8}_\\d{6}"),format='%Y%m%d_%H%M%S',origin = "1970-01-01",tz="Africa/Brazzaville") # convert the data and time charaters to real date and time with the correct time zone
+      sound_check_merge_df$`File Start Date` <- format(as.Date(sound_check_merge_df$`File Start DateTime`, tz = "Africa/Brazzaville"),"%m/%d/%Y")
       sound_check_merge_df$`File End DateTime` <- sound_check_merge_df$`File Start DateTime`+ sound_check_merge_df$`File Duration (s)`
-      sound_check_merge_df$`File End Date` <- format(as.Date(sound_check_merge_df$`File End DateTime`,"%Y%m%d",tz="Africa/Brazzaville"),"%m/%d/%Y")
+      sound_check_merge_df$`File End Date` <- format(as.Date(sound_check_merge_df$`File End DateTime`,tz="Africa/Brazzaville"),"%m/%d/%Y")
       sound_check_merge_df$Detector <- "Sound Check"
       sound_check_merge_df$'Sound Check Count' <- "sound check"
       sound_check_merge_df <-dplyr::rename(sound_check_merge_df,`File Name` = `Current File Name`) # rename to, from
@@ -318,13 +482,16 @@ data_summaries_function <- function(
                                                        "File End Date","Sound Check Count","Exclude (y/e)","Notes",
                                                        "Deployment Number")] # create new dataframe with specific columns
       sound_check_merge_df2 <- dplyr::rename(sound_check_merge_df2, "Date" = "File Start Date")
-      sound_check_merge_df2$`File Start DateTime` <- as.POSIXct(str_extract(sound_check_merge_df2$'File Name',"\\d{8}.\\d{6}"),format='%Y%m%d_%H%M%S',origin = "1970-01-01",tz="Africa/Brazzaville") # convert the data and time charaters to real date and time with the correct time zone
-      sound_check_merge_df2$`File Start Date` <- format(as.Date(str_extract(sound_check_merge_df2$'File Name' ,"\\d{8}.\\d{6}"),"%Y%m%d"),"%m/%d/%Y")
+      sound_check_merge_df2$`File Start DateTime` <- as.POSIXct(str_extract(sound_check_merge_df2$'File Name',"\\d{8}_\\d{6}"),format='%Y%m%d_%H%M%S',origin = "1970-01-01",tz="Africa/Brazzaville") # convert the data and time charaters to real date and time with the correct time zone
+      sound_check_merge_df2$`File Start Date` <- format(as.Date(sound_check_merge_df2$`File Start DateTime`, tz = "Africa/Brazzaville"),"%m/%d/%Y")
       sound_check_merge_df2$`File End DateTime` <- sound_check_merge_df2$`File Start DateTime`+ sound_check_merge_df2$`File Duration (s)`
-      sound_check_merge_df2$`File End Date` <- format(as.Date(sound_check_merge_df2$`File End DateTime`,"%Y%m%d",tz="Africa/Brazzaville"),"%m/%d/%Y")
+      sound_check_merge_df2$`File End Date` <- format(as.Date(sound_check_merge_df2$`File End DateTime`,tz="Africa/Brazzaville"),"%m/%d/%Y")
       sound_check_merge_df2$Hour <- hour(sound_check_merge_df2$`File Start DateTime`)
-      sound_check_merge_df2$Date <- as.Date(sound_check_merge_df$`File Start Date`,format="%m/%d/%Y")
-      sound_check_merge_df2$`Sound Check File` <-
+      sound_check_merge_df2$Date <- as.Date(sound_check_merge_df2$`File Start DateTime`,tz="Africa/Brazzaville")
+      recording_effort <- .calculate_daily_recording_effort(sound_check_merge_df2)
+      if(nrow(recording_effort) == 0){
+        stop("Sound-check data contains no usable recording intervals.")
+      }
       #View(sound_check_merge_df2)
       #names(sound_check_merge_df2)
       #dim(sound_check_merge_df2)
@@ -369,10 +536,10 @@ data_summaries_function <- function(
   #unique(events_merge_df$`Begin Hour`)
 
   events_dets_df <- events_merge_df[,c("Site", "Begin File","File Offset (s)","Count","Deployment Number","Sound Problems", "Notes")]
-  events_dets_df$`File Start DateTime` <- as.POSIXct(str_extract(events_dets_df$`Begin File`,"\\d{8}.\\d{6}"),format='%Y%m%d_%H%M%S',origin = "1970-01-01",tz="Africa/Brazzaville") # convert the data and time charaters to real date and time with the correct time zone
-  events_dets_df$`File Start Date` <- format(as.Date(str_extract(events_dets_df$'Begin File' ,"\\d{8}.\\d{6}"),"%Y%m%d"),"%m/%d/%Y")
+  events_dets_df$`File Start DateTime` <- as.POSIXct(str_extract(events_dets_df$`Begin File`,"\\d{8}_\\d{6}"),format='%Y%m%d_%H%M%S',origin = "1970-01-01",tz="Africa/Brazzaville") # convert the data and time charaters to real date and time with the correct time zone
+  events_dets_df$`File Start Date` <- format(as.Date(events_dets_df$`File Start DateTime`,tz="Africa/Brazzaville"),"%m/%d/%Y")
   events_dets_df$`Detection DateTime` <- events_dets_df$`File Start DateTime`+ events_dets_df$`File Offset (s)`
-  events_dets_df$`Date` <- as.Date(events_dets_df$`Detection DateTime`,"%Y%m%d",tz="Africa/Brazzaville")
+  events_dets_df$`Date` <- as.Date(events_dets_df$`Detection DateTime`,tz="Africa/Brazzaville")
   events_dets_df$Hour <- hour(events_dets_df$`Detection DateTime`)#format(as.POSIXct(events_dets_df$`Detection DateTime`), format = "%H") # get hour of selection
   events_dets_df$Detector <- detector_name
   events_dets_df <- dplyr::rename(events_dets_df, "File Name" = "Begin File")
@@ -392,8 +559,15 @@ data_summaries_function <- function(
 
   ##### Zero-Days Tables  #####
   # selection tables with 0 hori-harm detections at filtered score threshold on rand dates
-    if(exists(zero_txt)){
-      zero_days<-list.files(path = zero_txt,recursive=T,full.names=TRUE, pattern = "*.txt") # list all the selection tables in the selection_tables folder
+    zero_days <- character()
+    if(has_zero_days){
+      zero_days <- list.files(path = zero_txt,recursive=T,full.names=TRUE, pattern = "*.txt")
+      if(length(zero_days) == 0){
+        warning("No zero-day selection tables were found in: ", zero_txt)
+        has_zero_days <- FALSE
+      }
+    }
+    if(has_zero_days){
       zero_days_list <- lapply(zero_days, function(x) {
         normalize_detection_table(
           read.table(file = x, header = T, sep ="\t", check.names=FALSE,quote = "\"",comment.char = ""),
@@ -412,16 +586,16 @@ data_summaries_function <- function(
       #zero_days_df2 <- dplyr::rename(zero_days_df2, "Event Count" = "Count")
       zero_days_df2 <- dplyr::rename(zero_days_df2, "File Name" = "Begin File")
       zero_days_df2$'Count' <- 0
-      zero_days_df2$`File Start DateTime` <- as.POSIXct(str_extract(zero_days_df2$`File Name`,"\\d{8}.\\d{6}"),format='%Y%m%d_%H%M%S',origin = "1970-01-01",tz="Africa/Brazzaville") # convert the data and time charaters to real date and time with the correct time zone
-      zero_days_df2$`File Start Date` <- format(as.Date(str_extract(zero_days_df2$'File Name' ,"\\d{8}.\\d{6}"),"%Y%m%d"),"%m/%d/%Y")
+      zero_days_df2$`File Start DateTime` <- as.POSIXct(str_extract(zero_days_df2$`File Name`,"\\d{8}_\\d{6}"),format='%Y%m%d_%H%M%S',origin = "1970-01-01",tz="Africa/Brazzaville") # convert the data and time charaters to real date and time with the correct time zone
+      zero_days_df2$`File Start Date` <- format(as.Date(zero_days_df2$`File Start DateTime`,tz="Africa/Brazzaville"),"%m/%d/%Y")
       zero_days_df2$`Detection DateTime` <- zero_days_df2$`File Start DateTime`+ zero_days_df2$`File Offset (s)`
-      zero_days_df2$`Date` <- as.Date(zero_days_df2$`Detection DateTime`,"%Y%m%d",tz="Africa/Brazzaville")
+      zero_days_df2$`Date` <- as.Date(zero_days_df2$`Detection DateTime`,tz="Africa/Brazzaville")
       zero_days_df2$`Hour` <- hour(zero_days_df2$`File Start DateTime`)
       zero_days_df2$Detector <- detector_name
     }
 
   #### Site information ####
-    if(exists("site_lat_long")){
+    if(!is.null(site_lat_long)){
       site_info_names <- names(site_lat_long)
     }
 
@@ -429,7 +603,7 @@ data_summaries_function <- function(
 
   #create table for every hour from the first to last in detector files
   # combing events and zero days
-    if(exists(zero_txt)){
+    if(has_zero_days){
       events_dets_df_zero <- full_join(events_dets_df,zero_days_df2)
       print(paste("Total Events in merged table:",sum(events_dets_df_zero$Count,na.rm=T), sep = " ")) # 2382
       print(paste("Min date in merged table:",min(events_dets_df_zero$Date), sep = " "))
@@ -442,12 +616,34 @@ data_summaries_function <- function(
   # events_dets_df_zero$Year <- year(events_dets_df_zero$Date)
 
 
-  # add sound check (if user requested)
-    if(events_bad_sound_remove == "y"| sound_check_include == "y"){
-           events_dets_df_zero <- full_join(events_dets_df_zero,sound_check_merge_df2) # merge det df with sound check
-           events_dets_df_zero <- events_dets_df_zero %>%
-             filter(is.na(`Exclude (y/e)`) | !(`Exclude (y/e)` %in% c("y", "Y","e")))
-          }
+  # Always remove detections from files marked as bad. Retain "e" files unless
+  # the user requested strict exclusion of site-days with less than 23 hours.
+    if(sound_check_include == "y"){
+      bad_sound_files <- sound_check_merge_df2 %>%
+        dplyr::filter(toupper(trimws(as.character(`Exclude (y/e)`))) == "Y") %>%
+        dplyr::distinct(Site, `File Name`)
+      events_dets_df_zero <- dplyr::anti_join(
+        events_dets_df_zero,
+        bad_sound_files,
+        by = c("Site", "File Name")
+      )
+
+      if(events_bad_sound_remove == "y"){
+        eligible_site_dates <- recording_effort %>%
+          dplyr::filter(recording_hours >= 23) %>%
+          dplyr::select(Site, Date)
+        events_dets_df_zero <- dplyr::semi_join(
+          events_dets_df_zero,
+          eligible_site_dates,
+          by = c("Site", "Date")
+        )
+        recording_effort <- dplyr::semi_join(
+          recording_effort,
+          eligible_site_dates,
+          by = c("Site", "Date")
+        )
+      }
+    }
   # sum(events_dets_df_zero$`Event Count`, na.rm = T)
   # unique(events_dets_df_zero$`Exclude (y/e)`,na.rm=T)
 
@@ -457,6 +653,13 @@ data_summaries_function <- function(
           #events_dets_df_zero <- events_dets_df_zero[,-14] # WHY IS THE  14TH COLUMN REMOVED HERE?
           events_dets_df_zero <- left_join(events_dets_df_zero,elp_rand, by = "Date") # combine rand dates with Event table
           events_dets_df_zero <- events_dets_df_zero %>% filter(`Rand` == "rand")# remove nonRand dates
+          if(!is.null(recording_effort)){
+            recording_effort <- recording_effort %>%
+              dplyr::filter(Date %in% elp_rand$Date)
+          }
+    }
+    if(nrow(events_dets_df_zero) == 0){
+      stop("No detection or zero-day rows remain after the selected filters.")
     }
     events_dets_df_zero <- events_dets_df_zero %>%
       mutate(
@@ -513,7 +716,7 @@ data_summaries_function <- function(
   # merge with bad sound quality times (needs to be determined by noise levels) - should be incorporated in the sound check file instead!
 
   # add strata, lat, and long information from the sites txt file
-    if(exists("site_lat_long")){
+    if(!is.null(site_lat_long)){
       events_hrly <- full_join(events_hrly1,site_lat_long)
     } else {
       events_hrly <- events_hrly1
@@ -572,7 +775,7 @@ data_summaries_function <- function(
   #### DAILY SUMMARIES ####
   # summarize daily Events from hourly table
   daily_site_summary <- events_hrly %>%
-    dplyr::group_by(Date, Site, WeekDate, across(all_of(site_info_names))) %>%
+    dplyr::group_by(Date, Site, WeekDate) %>%
     dplyr::summarise(
       total_Events = if(sum(!is.na(`Sum Events`)) == 0) NA_real_  # If all values are NA
       else sum(`Sum Events`, na.rm = TRUE),
@@ -586,6 +789,48 @@ data_summaries_function <- function(
     mutate(
       prop_night = night_total/total_Events,
       prop_day = (total_Events-night_total)/total_Events
+    )
+
+  if(!is.null(recording_effort)){
+    daily_site_summary <- dplyr::full_join(
+      daily_site_summary,
+      recording_effort,
+      by = c("Date", "Site")
+    ) %>%
+      mutate(
+        WeekDate = dplyr::coalesce(WeekDate, floor_date(Date, "week") + 1),
+        total_Events = ifelse(is.na(total_Events) & !is.na(recording_hours), 0, total_Events),
+        night_total = ifelse(is.na(night_total) & !is.na(recording_hours), 0, night_total),
+        n_hours = ifelse(is.na(n_hours) & !is.na(recording_hours), 0, n_hours),
+        n_valid_hours = ifelse(is.na(n_valid_hours) & !is.na(recording_hours), 0, n_valid_hours),
+        prop_night = night_total/total_Events,
+        prop_day = (total_Events-night_total)/total_Events
+      )
+  } else {
+    daily_site_summary$recording_hours <- NA_real_
+  }
+
+  if(!is.null(site_lat_long)){
+    site_metadata <- site_lat_long %>%
+      dplyr::distinct()
+    daily_site_summary <- dplyr::left_join(
+      daily_site_summary,
+      site_metadata,
+      by = "Site"
+    )
+    site_info_names <- setdiff(names(site_metadata), "Site")
+  } else {
+    site_info_names <- character()
+  }
+
+  daily_site_summary <- daily_site_summary %>%
+    mutate(
+      events_per_recording_hour = dplyr::if_else(
+        !is.na(recording_hours) & recording_hours > 0,
+        total_Events / recording_hours,
+        NA_real_
+      ),
+      events_per_24_recorded_hours = events_per_recording_hour * 24
     )
 
   daily_site_summary$Month <- month(daily_site_summary$Date)
@@ -750,7 +995,14 @@ data_summaries_function <- function(
       seEventsNight = sdEventsNight/sqrt(n),
       PropNightEvents = round(sumEventsNight/sumEvents, digit = 3),
       SumEventsPerDaysSampled = round(sumEvents/n,digit=3),
-      SumNightEventsPerDaysSampled = round(sumEventsNight/n,digit=3)
+      SumNightEventsPerDaysSampled = round(sumEventsNight/n,digit=3),
+      events_per_recording_hour = if(all(is.na(recording_hours)) ||
+                                     sum(recording_hours, na.rm=TRUE) == 0) NA_real_
+      else sum(total_Events[!is.na(recording_hours)], na.rm=TRUE) /
+        sum(recording_hours, na.rm=TRUE),
+      recording_hours = if(all(is.na(recording_hours))) NA_real_
+      else sum(recording_hours, na.rm=TRUE),
+      events_per_24_recorded_hours = events_per_recording_hour * 24
     )
   #sum(Event_weekly_means_site$sumEvents, na.rm=T) #36236
   Event_weekly_means_site$PropNightEvents[is.nan(Event_weekly_means_site$PropNightEvents)] <- NA # remove NaN from proportion calc.
@@ -832,7 +1084,14 @@ data_summaries_function <- function(
         seEventsNight = sdEventsNight/sqrt(n),
         PropNightEvents = round(sumEventsNight/sumEvents, digit = 3),
         SumEventsPerDaysSampled = round(sumEvents/n,digit=3),
-        SumNightEventsPerDaysSampled = round(sumEventsNight/n,digit=3)
+        SumNightEventsPerDaysSampled = round(sumEventsNight/n,digit=3),
+        events_per_recording_hour = if(all(is.na(recording_hours)) ||
+                                       sum(recording_hours, na.rm=TRUE) == 0) NA_real_
+        else sum(total_Events[!is.na(recording_hours)], na.rm=TRUE) /
+          sum(recording_hours, na.rm=TRUE),
+        recording_hours = if(all(is.na(recording_hours))) NA_real_
+        else sum(recording_hours, na.rm=TRUE),
+        events_per_24_recorded_hours = events_per_recording_hour * 24
       )
     # combine these data with the complete list of weeks to allow for gaps in plot
     complete_weeks_strat <- expand.grid(
@@ -950,7 +1209,14 @@ data_summaries_function <- function(
         seEventsNight = sdEventsNight/sqrt(n),
         PropNightEvents = round(sumEventsNight/sumEvents, digit = 3),
         SumEventsPerDaysSampled = round(sumEvents/n,digit=3),
-        SumNightEventsPerDaysSampled = round(sumEventsNight/n,digit=3)
+        SumNightEventsPerDaysSampled = round(sumEventsNight/n,digit=3),
+        events_per_recording_hour = if(all(is.na(recording_hours)) ||
+                                       sum(recording_hours, na.rm=TRUE) == 0) NA_real_
+        else sum(total_Events[!is.na(recording_hours)], na.rm=TRUE) /
+          sum(recording_hours, na.rm=TRUE),
+        recording_hours = if(all(is.na(recording_hours))) NA_real_
+        else sum(recording_hours, na.rm=TRUE),
+        events_per_24_recorded_hours = events_per_recording_hour * 24
       )
     # combine with complete weeks
     complete_weeks_veg <- expand.grid(
@@ -1017,7 +1283,14 @@ data_summaries_function <- function(
       else sum(night_total,na.rm=TRUE),
       meanNightEvents = if(all(is.na(night_total))) NA_real_
       else mean(night_total,na.rm=TRUE),
-      proportionNightEvents = sumNightEvents/sumEvents
+      proportionNightEvents = sumNightEvents/sumEvents,
+      events_per_recording_hour = if(all(is.na(recording_hours)) ||
+                                     sum(recording_hours, na.rm=TRUE) == 0) NA_real_
+      else sum(total_Events[!is.na(recording_hours)], na.rm=TRUE) /
+        sum(recording_hours, na.rm=TRUE),
+      recording_hours = if(all(is.na(recording_hours))) NA_real_
+      else sum(recording_hours, na.rm=TRUE),
+      events_per_24_recorded_hours = events_per_recording_hour * 24
     )
   sum(Event_monthly_means_site$sumEvents, na.rm=T) #36236
   Event_monthly_means_site$`Year-Month` <- as.Date(paste(Event_monthly_means_site$Year, Event_monthly_means_site$Month, "01", sep = "-"))
@@ -1068,7 +1341,14 @@ data_summaries_function <- function(
       else sum(night_total,na.rm=TRUE),
       meanNightEvents = if(all(is.na(night_total))) NA_real_
       else mean(night_total,na.rm=TRUE),
-      proportionNightEvents = sumNightEvents/sumEvents
+      proportionNightEvents = sumNightEvents/sumEvents,
+      events_per_recording_hour = if(all(is.na(recording_hours)) ||
+                                     sum(recording_hours, na.rm=TRUE) == 0) NA_real_
+      else sum(total_Events[!is.na(recording_hours)], na.rm=TRUE) /
+        sum(recording_hours, na.rm=TRUE),
+      recording_hours = if(all(is.na(recording_hours))) NA_real_
+      else sum(recording_hours, na.rm=TRUE),
+      events_per_24_recorded_hours = events_per_recording_hour * 24
     )
   sum(Event_monthly_means$sumEvents, na.rm=T) #36236
   Event_monthly_means$`Year-Month` <- as.Date(paste(Event_monthly_means$Year, Event_monthly_means$Month, "01", sep = "-"))
@@ -1153,7 +1433,14 @@ data_summaries_function <- function(
         else sum(night_total,na.rm=TRUE),
         meanNightEvents = if(all(is.na(night_total))) NA_real_
         else mean(night_total,na.rm=TRUE),
-        proportionNightEvents = sumNightEvents/sumEvents
+        proportionNightEvents = sumNightEvents/sumEvents,
+        events_per_recording_hour = if(all(is.na(recording_hours)) ||
+                                       sum(recording_hours, na.rm=TRUE) == 0) NA_real_
+        else sum(total_Events[!is.na(recording_hours)], na.rm=TRUE) /
+          sum(recording_hours, na.rm=TRUE),
+        recording_hours = if(all(is.na(recording_hours))) NA_real_
+        else sum(recording_hours, na.rm=TRUE),
+        events_per_24_recorded_hours = events_per_recording_hour * 24
       )
     sum(Event_monthly_means_stratum$sumEvents, na.rm=T) #36236
     Event_monthly_means_stratum$`Year-Month` <- as.Date(paste(Event_monthly_means_stratum$Year, Event_monthly_means_stratum$Month, "01", sep = "-"))
