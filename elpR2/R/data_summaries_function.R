@@ -47,18 +47,65 @@
   valid_checks <- sound_checks[exclude_code != "Y", , drop = FALSE]
   valid_starts <- valid_checks$`File Start DateTime`
   durations <- as.numeric(valid_checks$`File Duration (s)`)
-  if (anyNA(valid_checks$Site) ||
-      any(!nzchar(trimws(as.character(valid_checks$Site))))) {
-    stop("Sound-check rows not marked 'y' must have a Site value.")
-  }
-  if (anyNA(valid_checks$`File Name`) ||
-      any(!nzchar(trimws(as.character(valid_checks$`File Name`))))) {
-    stop("Sound-check rows not marked 'y' must have a File Name value.")
-  }
-  if (anyNA(valid_starts) || any(!is.finite(durations)) || any(durations <= 0)) {
+  invalid_site <- is.na(valid_checks$Site) |
+    !nzchar(trimws(as.character(valid_checks$Site)))
+  invalid_file_name <- is.na(valid_checks$`File Name`) |
+    !nzchar(trimws(as.character(valid_checks$`File Name`)))
+  invalid_start <- is.na(valid_starts)
+  invalid_duration <- !is.finite(durations) | durations <= 0
+  invalid_rows <- which(
+    invalid_site | invalid_file_name | invalid_start | invalid_duration
+  )
+  if (length(invalid_rows) > 0) {
+    format_value <- function(value) {
+      if (length(value) == 0L || is.na(value) || !nzchar(as.character(value))) {
+        return("<missing>")
+      }
+      as.character(value)
+    }
+    row_details <- vapply(invalid_rows, function(i) {
+      issues <- character()
+      if (invalid_site[i]) {
+        issues <- c(issues, "missing Site")
+      }
+      if (invalid_file_name[i]) {
+        issues <- c(issues, "missing recording file name")
+      }
+      if (invalid_start[i]) {
+        issues <- c(issues, "invalid or unparseable file start time")
+      }
+      if (invalid_duration[i]) {
+        issues <- c(
+          issues,
+          "File Duration (s) must be a positive finite number"
+        )
+      }
+      if (invalid_start[i] || invalid_duration[i]) {
+        issues <- c(issues, "file end time cannot be calculated")
+      }
+
+      source <- if (".source_workbook" %in% names(valid_checks)) {
+        format_value(valid_checks$.source_workbook[i])
+      } else {
+        "<source workbook unavailable>"
+      }
+      source_row <- if (".source_row" %in% names(valid_checks)) {
+        format_value(valid_checks$.source_row[i])
+      } else {
+        as.character(i)
+      }
+      paste0(
+        "  Workbook: ", source,
+        "; worksheet data row: ", source_row,
+        "; recording file: ", format_value(valid_checks$`File Name`[i]),
+        "; issue: ", paste(issues, collapse = ", ")
+      )
+    }, character(1))
     stop(
-      "Sound-check rows not marked 'y' must have valid file start times and ",
-      "positive, finite File Duration (s) values to calculate recording effort."
+      "Cannot calculate recording effort. Check these sound-check rows ",
+      "(rows marked 'y' are excluded):\n",
+      paste(row_details, collapse = "\n"),
+      call. = FALSE
     )
   }
 
@@ -460,17 +507,25 @@ data_summaries_function <- function(
       #sound_check_list <- rapply(sound_check_list, as.character, how = "replace") #make all columns character types before merging
       #sound_check_merge_df <- do.call("rbind", lapply(sound_check_list_df, as.data.frame)) # Combine them (the events cross over between sites and cuts off the last site - use the rbind.fill function)
       # sum(sapply(all_txt_df, nrow))
-      sound_check_list_df <- lapply(sound_check_list, read_xlsx,
-                                    sheet = "Sounds",
-                                    col_names = TRUE)  # Read the files in
-      sound_check_list_df <- lapply(sound_check_list_df, function(df) {
+      sound_check_list_df <- lapply(sound_check_list, function(sound_check_path) {
+        df <- read_xlsx(
+          sound_check_path,
+          sheet = "Sounds",
+          col_names = TRUE
+        )
+        df$.source_workbook <- normalizePath(
+          sound_check_path,
+          winslash = "/",
+          mustWork = FALSE
+        )
+        df$.source_row <- seq_len(nrow(df)) + 1L
         if("SampleRate" %in% names(df)) {
           df$SampleRate <- as.numeric(as.character(df$SampleRate))
         }
         if ("Deployment Number" %in% names(df)) {
           df$`Deployment Number` <- as.numeric(as.character(df$`Deployment Number`))
         }
-        return(df)
+        df
       })
       sound_check_merge_df <- dplyr::bind_rows(sound_check_list_df) # merge all sound check files together
       cols.nums <- c("Duration Hours",'File Duration (s)',"SampleRate")
@@ -492,7 +547,7 @@ data_summaries_function <- function(
       sound_check_merge_df$`Deployment Number` <- as.numeric(sound_check_merge_df$`Deployment Number`)
       sound_check_merge_df2 <- sound_check_merge_df[,c("Site", "File Name","File Duration (s)","File Start DateTime","File Start Date","File End DateTime",
                                                        "File End Date","Sound Check Count","Exclude (y/e)","Notes",
-                                                       "Deployment Number")] # create new dataframe with specific columns
+                                                       "Deployment Number", ".source_workbook", ".source_row")] # create new dataframe with specific columns
       sound_check_merge_df2 <- dplyr::rename(sound_check_merge_df2, "Date" = "File Start Date")
       sound_check_merge_df2$`File Start DateTime` <- as.POSIXct(str_extract(sound_check_merge_df2$'File Name',"\\d{8}_\\d{6}"),format='%Y%m%d_%H%M%S',origin = "1970-01-01",tz="Africa/Brazzaville") # convert the data and time charaters to real date and time with the correct time zone
       sound_check_merge_df2$`File Start Date` <- format(as.Date(sound_check_merge_df2$`File Start DateTime`, tz = "Africa/Brazzaville"),"%m/%d/%Y")
