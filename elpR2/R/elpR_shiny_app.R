@@ -1989,6 +1989,7 @@ card_1_5_zero_path_french <- HTML("<p><b>ENTRÉE 7:</b> Choisissez le dossier co
 
       result <- data_summaries_function(
 parent_dir = parent_dir_path(),
+output = parseDirPath(volumes, input$summary_folder_in),
 project_name = input$project_name_in,
 deployment_num = input$deployment_nums_in,
 detector_name = input$summary_detector_in,

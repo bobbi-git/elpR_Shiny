@@ -17,7 +17,8 @@ data_summaries_function(
   use_only_sites_provided,
   site_lat_long,
   rand_dates_needed,
-  events_bad_sound_remove
+  events_bad_sound_remove,
+  output = NULL
 )
 }
 \arguments{
@@ -46,6 +47,8 @@ data_summaries_function(
 \item{rand_dates_needed}{If you want 3 random days per week (y/n) *dates are pre-selected in the /rand-days/Rand_dates.csv file}
 
 \item{events_bad_sound_remove}{If you want to exclude site-days with less than 23 recorded hours (y/n)}
+
+\item{output}{Folder where summary tables and plots will be saved. Defaults to the data_summaries folder within parent_dir.}
 }
 \value{
 This function outputs:
@@ -174,7 +177,7 @@ This function will:
 \itemize{
 \item Install and load necessary packages
 \item Read in data provided by the user (sound check files, random dates, selection tables, zero-day tables, sites file)
-\item Generate summary tables and plots that are saved to /data_summaries/summary_tables and /data_summaries/summary_plots, respectively
+\item Generate summary tables and plots that are saved to summary_tables and summary_plots folders within the selected output folder
 }
 }
 \author{

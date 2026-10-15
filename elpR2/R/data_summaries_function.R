@@ -146,7 +146,7 @@
 #' \itemize{
 #' \item Install and load necessary packages
 #' \item Read in data provided by the user (sound check files, random dates, selection tables, zero-day tables, sites file)
-#' \item Generate summary tables and plots that are saved to /data_summaries/summary_tables and /data_summaries/summary_plots, respectively
+#' \item Generate summary tables and plots that are saved to the selected output folder
 #' }
 #'
 #' @param parent_dir Folder containing the specific elpR sub-folder structure
@@ -162,6 +162,8 @@
 #' @param site_lat_long A .txt file containing site names with latitude, longitude, vegetation class (optional), strata (optional): See existing files in the "elpR/Files/sites" folder for required structure of .txt file
 #' @param rand_dates_needed If you want 3 random days per week (y/n) *dates are pre-selected in the /rand-days/Rand_dates.csv file
 #' @param events_bad_sound_remove If you want to exclude site-days with less than 23 recorded hours (y/n)
+#' @param output Folder where summary tables and plots will be saved. Defaults to
+#'   the data_summaries folder within parent_dir.
 #' @details When sound-check files are included, files marked "y" are excluded from
 #' detections and recording effort. Recording effort is calculated as the union of
 #' valid recording intervals within each site and calendar day. Files marked "e"
@@ -295,12 +297,38 @@ data_summaries_function <- function(
     use_only_sites_provided,
     site_lat_long,
     rand_dates_needed,
-    events_bad_sound_remove
+    events_bad_sound_remove,
+    output = NULL
   ){
 
   print("Running data_summaries_function...")
-  og_dir <- getwd() #to reset wd at the end of the function
-  on.exit(setwd(og_dir), add = TRUE)
+  if (is.null(output) || !length(output)) {
+    output <- file.path(parent_dir, "data_summaries")
+  }
+  if (!is.character(output) || length(output) != 1L ||
+      is.na(output) || !nzchar(output)) {
+    stop("Summary output must be a single valid folder path.")
+  }
+  summary_tables_name <- if (dir.exists(file.path(output, "summaries_tables")) &&
+                             !dir.exists(file.path(output, "summary_tables"))) {
+    "summaries_tables"
+  } else {
+    "summary_tables"
+  }
+  summary_plots_name <- if (dir.exists(file.path(output, "summaries_plots")) &&
+                            !dir.exists(file.path(output, "summary_plots"))) {
+    "summaries_plots"
+  } else {
+    "summary_plots"
+  }
+  summary_tables_dir <- file.path(output, summary_tables_name)
+  summary_plots_dir <- file.path(output, summary_plots_name)
+  for (output_dir in c(output, summary_tables_dir, summary_plots_dir)) {
+    if (!dir.exists(output_dir) &&
+        !dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)) {
+      stop("Could not create summary output folder: ", output_dir)
+    }
+  }
 
   if (events_bad_sound_remove == "y" && sound_check_include != "y") {
     stop(
@@ -336,8 +364,6 @@ data_summaries_function <- function(
       print("you only want to include the sites that were listed in the site_lat_long file. This might result in detections being excluded if they occur on sites not included in the site_lat_long file")
     } else {print("you want to include all sites that are in the merged selection tables, and will not filter only by sites listed in the site_lat_long file.")
         }
-
-  setwd(paste0(parent_dir, "/data_summaries"))
 
     # install and load necessary packages
     det_sum_packages <- c("shiny","dplyr", "tidyverse","stringr","purrr","lubridate","readxl","stargazer","broom","ggplot2")
@@ -483,7 +509,7 @@ data_summaries_function <- function(
       #dim(sound_check_merge_df2)
       #str(sound_check_merge_df2)
       #unique(sound_check_merge_df2$`Exclude (y/e)`, na.rm=T)
-      write.table(sound_check_merge_df2,paste(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,"_soundCheck_merged.txt",sep=""),sep='\t',na="",col.names=TRUE,row.names=FALSE, quote=FALSE, append=FALSE)
+      write.table(sound_check_merge_df2,paste(summary_tables_dir,"/",proj_dep_name,"_soundCheck_merged.txt",sep=""),sep='\t',na="",col.names=TRUE,row.names=FALSE, quote=FALSE, append=FALSE)
       print(paste("Minimum Sound Check Date",min(sound_check_merge_df2$'File Start DateTime', na.rm = TRUE),sep=" ")) # 2017-10-02 WAT
       print(paste("Maximum Sound Check Date",max(sound_check_merge_df2$'File Start DateTime', na.rm = TRUE),sep = " ")) # 2023-11-27 WAT
       print(paste("Total hours of sounds in this dataset:",round(sum(sound_check_merge_df2$`File Duration (s)`, na.rm=TRUE)/60/60, digits = 4),sep= " "))
@@ -540,7 +566,7 @@ data_summaries_function <- function(
   print(paste("Minimum Event selection table date:",min(events_dets_df$`File Start DateTime`, na.rm = TRUE),sep=" "))
   print(paste("Maximum Event selection table date:",max(events_dets_df$`File Start DateTime`, na.rm = TRUE),sep=" "))
   print(paste("Total detected Events:",sum(events_dets_df$Count, na.rm = TRUE),sep=" ")) # 2382 Events
-  write.table(events_dets_df,paste(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,"_events_SSTs_merged.txt",sep=""),sep='\t',na="",col.names=TRUE,row.names=FALSE, quote=FALSE, append=FALSE)
+  write.table(events_dets_df,paste(summary_tables_dir,"/",proj_dep_name,"_events_SSTs_merged.txt",sep=""),sep='\t',na="",col.names=TRUE,row.names=FALSE, quote=FALSE, append=FALSE)
 
 
   ##### Zero-Days Tables  #####
@@ -735,7 +761,7 @@ data_summaries_function <- function(
   #unique(events_hrly$Site)
   #sum(events_hrly$`Sum Events`,na.rm=T) #36236
 
-  write.table(events_hrly,paste(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,"_Events_ZeroDays_ExcludeBadSounds_Rand_hourly.txt",sep=""),
+  write.table(events_hrly,paste(summary_tables_dir,"/",proj_dep_name,"_Events_ZeroDays_ExcludeBadSounds_Rand_hourly.txt",sep=""),
              sep='\t',na="",col.names=TRUE,row.names=FALSE, quote=FALSE, append=FALSE)
 
   nightEvents <- sum(events_hrly$`Sum Events`[events_hrly$DayNight == "Night"],na.rm=TRUE)  #38791
@@ -834,7 +860,7 @@ data_summaries_function <- function(
   print(paste("Total Events per day for all dates:",sum(daily_site_summary$total_Events, na.rm=TRUE),sep=" ")) #36656
 
   write.table(daily_site_summary,
-              paste(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,"_Events_perDay.txt",sep=""),
+              paste(summary_tables_dir,"/",proj_dep_name,"_Events_perDay.txt",sep=""),
               sep='\t',na="",col.names=TRUE,row.names=FALSE, quote=FALSE, append=FALSE)
 
 
@@ -920,7 +946,7 @@ data_summaries_function <- function(
       ungroup()
     View(events_daily_strata_table)
     write.table(events_daily_strata_table,
-                paste(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,"_Events_perDay_perStrata.txt",sep=""),
+                paste(summary_tables_dir,"/",proj_dep_name,"_Events_perDay_perStrata.txt",sep=""),
                 sep='\t',na="",col.names=TRUE,row.names=FALSE, quote=FALSE, append=FALSE)
 
   }
@@ -958,7 +984,7 @@ data_summaries_function <- function(
            x = "Date")
 
     write.table(daily_veg_summary_complete,
-                paste(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,"_Events_perDay_perVegClass.txt",sep=""),
+                paste(summary_tables_dir,"/",proj_dep_name,"_Events_perDay_perVegClass.txt",sep=""),
                 sep='\t',na="",col.names=TRUE,row.names=FALSE, quote=FALSE, append=FALSE)
   }
 
@@ -1003,7 +1029,7 @@ data_summaries_function <- function(
   Event_weekly_means_site$PropNightEvents[is.nan(Event_weekly_means_site$PropNightEvents)] <- NA # remove NaN from proportion calc.
   #stem(Event_weekly_means_site$PropNightEvents) # look at the distribution of night Event proportions
 
-  write.table(Event_weekly_means_site,paste(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,
+  write.table(Event_weekly_means_site,paste(summary_tables_dir,"/",proj_dep_name,
                                              "_Events_Site_Weekly_Summaries.txt",sep=""),
               sep='\t',na="",col.names=TRUE,row.names=FALSE,
               quote=FALSE, append=FALSE)
@@ -1095,7 +1121,7 @@ data_summaries_function <- function(
     Event_weekly_means_strata_complete <- left_join(complete_weeks_strat, Event_weekly_means_strata, by = c("Strata","WeekDate"))
     #save table
     #View(Event_weekly_means_strata_complete)
-    write.table(Event_weekly_means_strata_complete,paste0(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,
+    write.table(Event_weekly_means_strata_complete,paste0(summary_tables_dir,"/",proj_dep_name,
                                                           "_Events_Strata_Weekly_Summaries.txt"),
                 sep='\t',na="",col.names=TRUE,row.names=FALSE,
                 quote=FALSE, append=FALSE)
@@ -1246,7 +1272,7 @@ data_summaries_function <- function(
            x = "Week (month-year)",
            y = "Mean Daily Events per Week (±SE)")
 
-    write.table(Event_weekly_means_veg_complete,paste0(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,
+    write.table(Event_weekly_means_veg_complete,paste0(summary_tables_dir,"/",proj_dep_name,
                                                        "_Mean_Daily_Events_VegClass_Weekly_Summaries.txt"),
                 sep='\t',na="",col.names=TRUE,row.names=FALSE,
                 quote=FALSE, append=FALSE)
@@ -1296,7 +1322,7 @@ data_summaries_function <- function(
     mutate(month_group = cumsum(c(TRUE, diff(as.numeric(`Year-Month`)) > 31))) %>%
     ungroup()
   write.table(Event_monthly_means_site,
-              paste0(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,"_Events_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Site.txt"),
+              paste0(summary_tables_dir,"/",proj_dep_name,"_Events_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Site.txt"),
               sep='\t',na="",col.names=TRUE,row.names=FALSE, quote=FALSE, append=FALSE)
 
   # plot monthly means by site
@@ -1348,7 +1374,7 @@ data_summaries_function <- function(
   sum(Event_monthly_means$sumEvents, na.rm=T) #36236
   Event_monthly_means$`Year-Month` <- as.Date(paste(Event_monthly_means$Year, Event_monthly_means$Month, "01", sep = "-"))
   write.table(Event_monthly_means,
-              paste0(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,"_Events_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean.txt"),
+              paste0(summary_tables_dir,"/",proj_dep_name,"_Events_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean.txt"),
               sep='\t',na="",col.names=TRUE,row.names=FALSE, quote=FALSE, append=FALSE)
 
   # Create complete time series
@@ -1405,7 +1431,7 @@ data_summaries_function <- function(
             title = "Monthly Means Linear Regression Summary",
             covariate.labels = "Time",
             report = "vc*spt",
-            out = paste(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,"_monthly_means_regression_summary.txt",sep=""))
+            out = paste(summary_tables_dir,"/",proj_dep_name,"_monthly_means_regression_summary.txt",sep=""))
 
   ##### mean daily per month by stratum #####
   if("Strata" %in% names(daily_site_summary)){
@@ -1440,7 +1466,7 @@ data_summaries_function <- function(
     sum(Event_monthly_means_stratum$sumEvents, na.rm=T) #36236
     Event_monthly_means_stratum$`Year-Month` <- as.Date(paste(Event_monthly_means_stratum$Year, Event_monthly_means_stratum$Month, "01", sep = "-"))
     write.table(Event_monthly_means_stratum,
-                paste0(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,"_PNNN_Events_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Stratum.txt"),
+                paste0(summary_tables_dir,"/",proj_dep_name,"_PNNN_Events_ZeroDays_soundExcluded_3randDaysOnly_MonthlyMean_Stratum.txt"),
                 sep='\t',na="",col.names=TRUE,row.names=FALSE, quote=FALSE, append=FALSE)
   }
 
@@ -1542,7 +1568,7 @@ data_summaries_function <- function(
               column.labels = strata_models$Strata,
               intercept.bottom = FALSE,
               report = "vc*spt",
-              out = paste0(parent_dir,"/data_summaries/summary_tables/",proj_dep_name,"_stratum_regression_results.txt"))
+              out = paste0(summary_tables_dir,"/",proj_dep_name,"_stratum_regression_results.txt"))
   }
 
 
@@ -1586,7 +1612,7 @@ data_summaries_function <- function(
   # Write all plots into an .Rds file
   saveRDS(
     save_list,
-    paste0(parent_dir,"/data_summaries/summary_plots/",proj_dep_name,"_saved_plots.Rds")
+    paste0(summary_plots_dir,"/",proj_dep_name,"_saved_plots.Rds")
   )
 
   # Save each plot in the list as a separate PNG file
@@ -1598,7 +1624,7 @@ data_summaries_function <- function(
       data_description <- if (is.data.frame(plot_data)) paste(nrow(plot_data), "rows") else "layer-defined data"
       print(paste("Saving plot:", plot_name, "with", data_description))
       safe_ggsave(
-        filename = paste0(parent_dir,"/data_summaries/summary_plots/",proj_dep_name,"_",plot_name,".png"),
+        filename = paste0(summary_plots_dir,"/",proj_dep_name,"_",plot_name,".png"),
         plot = save_list[[plot_name]],
         width = 10,
         height = 8
@@ -1607,7 +1633,6 @@ data_summaries_function <- function(
   }
 
 
-  setwd(og_dir)
   print("Running data_summaries_function complete.")
   return("Finished!")
 
