@@ -1266,8 +1266,6 @@ data_summaries_function <- function(
     )
   }
 
-  # Write all plots into an .Rds file
-  saveRDS(save_list, paste0(parent_dir,"/data_summaries/summary_plots/",proj_dep_name,"_saved_plots.Rds"))
 
   # Save each plot in the list as a separate PNG file
   for (plot_name in names(save_list)) {
@@ -1286,6 +1284,40 @@ data_summaries_function <- function(
     }
   }
 
+  # Write all plots into an .Rds file
+  #saveRDS(save_list, paste0(parent_dir,"/data_summaries/summary_plots/",proj_dep_name,"_saved_plots.Rds"))
+
+  # testing new rds save option
+  out_dir <- file.path(parent_dir, "data_summaries", "summary_plots")
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+  final_path <- file.path(out_dir, paste0(proj_dep_name, "_saved_plots.Rds"))
+  tmp_path <- tempfile(
+    pattern = paste0(proj_dep_name, "_saved_plots_"),
+    tmpdir = out_dir,
+    fileext = ".Rds"
+  )
+  saveRDS(save_list, tmp_path)  # Add compress = FALSE if saving time is a concern
+  if (!file.exists(tmp_path) || file.info(tmp_path)$size == 0) {
+    unlink(tmp_path)
+    stop("RDS file was not written successfully")
+  }
+  # Windows generally won't rename over an existing file.
+  backup_path <- paste0(final_path, ".previous")
+  if (file.exists(final_path)) {
+    if (file.exists(backup_path)) unlink(backup_path)
+    if (!file.rename(final_path, backup_path)) {
+      unlink(tmp_path)
+      stop("Could not move the previous file aside")
+    }
+  }
+  if (!file.rename(tmp_path, final_path)) {
+    # Restore the previous file if promoting the new file fails.
+    if (file.exists(backup_path)) file.rename(backup_path, final_path)
+    unlink(tmp_path)
+    stop("Could not move the completed file into place")
+  }
+  #########
 
   setwd(og_dir)
   print("Running data_summaries_function complete.")
