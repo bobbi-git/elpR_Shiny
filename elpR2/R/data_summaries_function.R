@@ -20,11 +20,9 @@
 # enable option for gunshot tables? Or just just one detector folder instead
 # remove dates that are not listed in sound check file? (optional) - shouldn't this already be happening by only marking 'good' dates from Event SSTs?
 
-.calculate_daily_recording_effort <- function(sound_checks,
-                                              timezone = "Africa/Brazzaville") {
+.calculate_daily_recording_effort <- function(sound_checks) {
   required_columns <- c(
-    "Site", "File Name", "File Start DateTime", "File Duration (s)",
-    "Exclude (y/e)"
+    "Site", "File Name", "Date", "Duration Hours", "Exclude (y/e)"
   )
   missing_columns <- setdiff(required_columns, names(sound_checks))
   if (length(missing_columns) > 0) {
@@ -45,16 +43,15 @@
   }
 
   valid_checks <- sound_checks[exclude_code != "Y", , drop = FALSE]
-  valid_starts <- valid_checks$`File Start DateTime`
-  durations <- as.numeric(valid_checks$`File Duration (s)`)
+  recording_hours <- as.numeric(valid_checks$`Duration Hours`)
   invalid_site <- is.na(valid_checks$Site) |
     !nzchar(trimws(as.character(valid_checks$Site)))
   invalid_file_name <- is.na(valid_checks$`File Name`) |
     !nzchar(trimws(as.character(valid_checks$`File Name`)))
-  invalid_start <- is.na(valid_starts)
-  invalid_duration <- !is.finite(durations) | durations <= 0
+  invalid_date <- is.na(valid_checks$Date)
+  invalid_hours <- !is.finite(recording_hours) | recording_hours < 0
   invalid_rows <- which(
-    invalid_site | invalid_file_name | invalid_start | invalid_duration
+    invalid_site | invalid_file_name | invalid_date | invalid_hours
   )
   if (length(invalid_rows) > 0) {
     format_value <- function(value) {
@@ -71,17 +68,14 @@
       if (invalid_file_name[i]) {
         issues <- c(issues, "missing recording file name")
       }
-      if (invalid_start[i]) {
-        issues <- c(issues, "invalid or unparseable file start time")
+      if (invalid_date[i]) {
+        issues <- c(issues, "invalid or unparseable file date")
       }
-      if (invalid_duration[i]) {
+      if (invalid_hours[i]) {
         issues <- c(
           issues,
-          "File Duration (s) must be a positive finite number"
+          "Duration Hours must be a finite non-negative number"
         )
-      }
-      if (invalid_start[i] || invalid_duration[i]) {
-        issues <- c(issues, "file end time cannot be calculated")
       }
 
       source <- if (".source_workbook" %in% names(valid_checks)) {
@@ -102,7 +96,7 @@
       )
     }, character(1))
     stop(
-      "Cannot calculate recording effort. Check these sound-check rows ",
+      "Cannot calculate recording effort from sound-check hours. Check these rows ",
       "(rows marked 'y' are excluded):\n",
       paste(row_details, collapse = "\n"),
       call. = FALSE
@@ -117,70 +111,21 @@
     ))
   }
 
-  interval_segments <- vector("list", nrow(valid_checks))
-  for (i in seq_len(nrow(valid_checks))) {
-    interval_start <- as.numeric(valid_starts[i])
-    interval_end <- interval_start + durations[i]
-    current_date <- as.Date(valid_starts[i], tz = timezone)
-    final_date <- as.Date(
-      as.POSIXct(interval_end - 1e-6, origin = "1970-01-01", tz = timezone),
-      tz = timezone
-    )
-    file_segments <- list()
-
-    while (current_date <= final_date) {
-      day_start <- as.numeric(as.POSIXct(
-        paste(current_date, "00:00:00"),
-        tz = timezone
-      ))
-      next_day_start <- as.numeric(as.POSIXct(
-        paste(current_date + 1, "00:00:00"),
-        tz = timezone
-      ))
-      segment_start <- max(interval_start, day_start)
-      segment_end <- min(interval_end, next_day_start)
-      if (segment_end > segment_start) {
-        file_segments[[length(file_segments) + 1L]] <- data.frame(
-          Site = as.character(valid_checks$Site[i]),
-          Date = current_date,
-          interval_start = segment_start,
-          interval_end = segment_end
-        )
-      }
-      current_date <- current_date + 1
-    }
-    interval_segments[[i]] <- do.call(rbind, file_segments)
-  }
-
-  segments <- do.call(rbind, interval_segments)
-  group_indices <- split(
-    seq_len(nrow(segments)),
-    interaction(segments$Site, segments$Date, drop = TRUE)
+  message(
+    "Summing Duration Hours for ",
+    nrow(valid_checks),
+    " non-excluded sound-check rows by site and date."
   )
-  effort_by_site_date <- lapply(group_indices, function(indices) {
-    site_date_segments <- segments[indices, , drop = FALSE]
-    site_date_segments <- site_date_segments[
-      order(site_date_segments$interval_start, site_date_segments$interval_end),
-      ,
-      drop = FALSE
-    ]
-    cumulative_interval_end <- cummax(site_date_segments$interval_end)
-    previous_interval_end <- c(
-      site_date_segments$interval_start[1],
-      cumulative_interval_end[seq_len(length(cumulative_interval_end) - 1L)]
-    )
-    covered_seconds <- pmax(
-      0,
-      site_date_segments$interval_end -
-        pmax(site_date_segments$interval_start, previous_interval_end)
-    )
-    data.frame(
-      Site = site_date_segments$Site[1],
-      Date = site_date_segments$Date[1],
-      recording_hours = min(24, sum(covered_seconds) / 3600)
-    )
-  })
-  do.call(rbind, effort_by_site_date)
+  effort <- stats::aggregate(
+    recording_hours,
+    by = list(
+      Site = as.character(valid_checks$Site),
+      Date = as.Date(valid_checks$Date)
+    ),
+    FUN = sum
+  )
+  names(effort)[3] <- "recording_hours"
+  effort
 }
 
 #' @title Data Summaries
@@ -212,8 +157,9 @@
 #' @param output Folder where summary tables and plots will be saved. Defaults to
 #'   the data_summaries folder within parent_dir.
 #' @details When sound-check files are included, files marked "y" are excluded from
-#' detections and recording effort. Recording effort is calculated as the union of
-#' valid recording intervals within each site and calendar day. Files marked "e"
+#' detections and recording effort. Recording effort is the sum of
+#' \code{Duration Hours} for files within each site and calendar day, excluding
+#' files marked "y". Files marked "e"
 #' are retained unless \code{events_bad_sound_remove = "y"}, which excludes site-days
 #' with less than 23 recorded hours. The daily site summary and weekly/monthly
 #' summary tables include recording hours and effort-adjusted event rates.
@@ -253,7 +199,7 @@
 #'    \item total_Events
 #'    \item n_hours: Total hours sampled for the date
 #'    \item n_valid_hours: Total valid hours sampled for the date
-#'    \item recording_hours: Valid recording duration for the site and calendar date
+#'    \item recording_hours: Sum of sound-check file Duration Hours for the site and calendar date
 #'    \item events_per_recording_hour: Events divided by recorded hours
 #'    \item events_per_24_recorded_hours: Events per recording hour scaled to 24 hours
 #'    \item night_total: Total nighttime Events for the date
@@ -507,11 +453,21 @@ data_summaries_function <- function(
       #sound_check_list <- rapply(sound_check_list, as.character, how = "replace") #make all columns character types before merging
       #sound_check_merge_df <- do.call("rbind", lapply(sound_check_list_df, as.data.frame)) # Combine them (the events cross over between sites and cuts off the last site - use the rbind.fill function)
       # sum(sapply(all_txt_df, nrow))
-      sound_check_list_df <- lapply(sound_check_list, function(sound_check_path) {
+      sound_check_list_df <- lapply(seq_along(sound_check_list), function(i) {
+        sound_check_path <- sound_check_list[i]
+        message(
+          "Reading sound-check workbook ",
+          i,
+          " of ",
+          length(sound_check_list),
+          ": ",
+          basename(sound_check_path)
+        )
         df <- read_xlsx(
           sound_check_path,
           sheet = "Sounds",
-          col_names = TRUE
+          col_names = TRUE,
+          col_types = "text"
         )
         df$.source_workbook <- normalizePath(
           sound_check_path,
@@ -519,17 +475,15 @@ data_summaries_function <- function(
           mustWork = FALSE
         )
         df$.source_row <- seq_len(nrow(df)) + 1L
-        if("SampleRate" %in% names(df)) {
-          df$SampleRate <- as.numeric(as.character(df$SampleRate))
-        }
-        if ("Deployment Number" %in% names(df)) {
-          df$`Deployment Number` <- as.numeric(as.character(df$`Deployment Number`))
-        }
         df
       })
       sound_check_merge_df <- dplyr::bind_rows(sound_check_list_df) # merge all sound check files together
-      cols.nums <- c("Duration Hours",'File Duration (s)',"SampleRate")
-      sound_check_merge_df[cols.nums] <- sapply(sound_check_merge_df[cols.nums],as.numeric) # set specific columns as numeric
+      sound_check_merge_df$`File Duration (s)` <- as.numeric(
+        sound_check_merge_df$`File Duration (s)`
+      )
+      sound_check_merge_df$`Duration Hours` <- as.numeric(
+        sound_check_merge_df$`Duration Hours`
+      )
       sound_check_merge_df$`File Start DateTime` <- as.POSIXct(str_extract(sound_check_merge_df$`Current File Name`,"\\d{8}_\\d{6}"),format='%Y%m%d_%H%M%S',origin = "1970-01-01",tz="Africa/Brazzaville") # convert the data and time charaters to real date and time with the correct time zone
       sound_check_merge_df$`File Start Date` <- format(as.Date(sound_check_merge_df$`File Start DateTime`, tz = "Africa/Brazzaville"),"%m/%d/%Y")
       sound_check_merge_df$`File End DateTime` <- sound_check_merge_df$`File Start DateTime`+ sound_check_merge_df$`File Duration (s)`
@@ -545,7 +499,7 @@ data_summaries_function <- function(
                                        `Deployment Number` = `Deployment`)
       }
       sound_check_merge_df$`Deployment Number` <- as.numeric(sound_check_merge_df$`Deployment Number`)
-      sound_check_merge_df2 <- sound_check_merge_df[,c("Site", "File Name","File Duration (s)","File Start DateTime","File Start Date","File End DateTime",
+      sound_check_merge_df2 <- sound_check_merge_df[,c("Site", "File Name","File Duration (s)","Duration Hours","File Start DateTime","File Start Date","File End DateTime",
                                                        "File End Date","Sound Check Count","Exclude (y/e)","Notes",
                                                        "Deployment Number", ".source_workbook", ".source_row")] # create new dataframe with specific columns
       sound_check_merge_df2 <- dplyr::rename(sound_check_merge_df2, "Date" = "File Start Date")
@@ -557,7 +511,7 @@ data_summaries_function <- function(
       sound_check_merge_df2$Date <- as.Date(sound_check_merge_df2$`File Start DateTime`,tz="Africa/Brazzaville")
       recording_effort <- .calculate_daily_recording_effort(sound_check_merge_df2)
       if(nrow(recording_effort) == 0){
-        stop("Sound-check data contains no usable recording intervals.")
+        stop("Sound-check data contains no usable recording hours.")
       }
       #View(sound_check_merge_df2)
       #names(sound_check_merge_df2)

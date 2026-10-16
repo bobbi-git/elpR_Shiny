@@ -84,7 +84,7 @@ This function outputs:
 \item total_Events
 \item n_hours: Total hours sampled for the date
 \item n_valid_hours: Total valid hours sampled for the date
-\item recording_hours: Valid recording duration for the site and calendar date
+\item recording_hours: Sum of sound-check file Duration Hours for the site and calendar date
 \item events_per_recording_hour: Events divided by recorded hours
 \item events_per_24_recorded_hours: Events per recording hour scaled to 24 hours
 \item night_total: Total nighttime Events for the date
@@ -163,11 +163,12 @@ This function outputs:
 }
 \details{
 When sound-check files are included, files marked "y" are excluded from
-detections and recording effort. Recording effort is calculated as the union of
-valid recording intervals within each site and calendar day. Files marked "e"
-are retained unless \code{events_bad_sound_remove = "y"}, which excludes site-days
-with less than 23 recorded hours. The daily site summary and weekly/monthly
-summary tables include recording hours and effort-adjusted event rates.
+detections and recording effort. Recording effort is the sum of
+\code{Duration Hours} for files within each site and calendar day, excluding
+files marked "y". Files marked "e" are retained unless
+\code{events_bad_sound_remove = "y"}, which excludes site-days with less than
+23 recorded hours. The daily site summary and weekly/monthly summary tables
+include recording hours and effort-adjusted event rates.
 Existing event-count plots retain their original scales.
 }
 \description{
