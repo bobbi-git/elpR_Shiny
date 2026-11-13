@@ -212,7 +212,47 @@ data_summaries_function <- function(
       )
     }
 
-    normalize_detection_table <- function(table, event_count_column, file_path = NA_character_) {
+    # normalize_detection_table <- function(table, event_count_column, file_path = NA_character_) {
+    #   if (!(event_count_column %in% names(table))) {
+    #     stop(
+    #       "Selection table lacks the selected event-count column '",
+    #       event_count_column,
+    #       "': ",
+    #       file_path
+    #     )
+    #   }
+    #   if (event_count_column != "Count") {
+    #     names(table)[names(table) == event_count_column] <- "Count"
+    #   }
+    #   table$Count <- as.numeric(table$Count)
+    #   table$`File Offset (s)` <- as.numeric(table$`File Offset (s)`)
+    #   table
+    # }
+    normalize_detection_table <- function(table, event_count_column,
+                                          file_path = NA_character_) {
+      deployment_columns <- intersect(
+        c("Deployment Number", "Deployment", "Dep Num"),
+        names(table)
+      )
+
+      if (length(deployment_columns) != 1L) {
+        stop(
+          "Selection table must contain exactly one deployment column named ",
+          "'Deployment Number', 'Deployment', or 'Dep Num'; found: ",
+          if (length(deployment_columns) == 0L) {
+            "none"
+          } else {
+            paste(deployment_columns, collapse = ", ")
+          },
+          ": ",
+          file_path
+        )
+      }
+
+      if (deployment_columns != "Deployment Number") {
+        names(table)[names(table) == deployment_columns] <- "Deployment Number"
+      }
+
       if (!(event_count_column %in% names(table))) {
         stop(
           "Selection table lacks the selected event-count column '",
@@ -221,16 +261,18 @@ data_summaries_function <- function(
           file_path
         )
       }
+
       if (event_count_column != "Count") {
         names(table)[names(table) == event_count_column] <- "Count"
       }
+
       table$Count <- as.numeric(table$Count)
       table$`File Offset (s)` <- as.numeric(table$`File Offset (s)`)
       table
     }
 
-    # Make any error drop us into seeing where it came from
-    options(error = rlang::entrace)  # requires rlang
+    ## Make any error drop us into seeing where it came from
+    #options(error = rlang::entrace)  # requires rlang
 
 
   # file names
@@ -251,7 +293,8 @@ data_summaries_function <- function(
       # sum(sapply(all_txt_df, nrow))
       sound_check_list_df <- lapply(sound_check_list, read_xlsx,
                                     sheet = "Sounds",
-                                    col_names = TRUE)  # Read the files in
+                                    col_names = TRUE,
+                                    col_types = "text")  # Read the files in
       sound_check_list_df <- lapply(sound_check_list_df, function(df) {
         if("SampleRate" %in% names(df)) {
           df$SampleRate <- as.numeric(as.character(df$SampleRate))
@@ -333,7 +376,7 @@ data_summaries_function <- function(
   #stem(as.numeric(events_merge_df$`Begin Hour`))
   #unique(events_merge_df$`Begin Hour`)
 
-  events_dets_df <- events_merge_df[,c("Site", "Begin File","File Offset (s)","Count","Deployment Number","Sound Problems", "Notes")]
+  events_dets_df <- events_merge_df[,c("Site", "Begin File","File Offset (s)","Count","Deployment Number", "Notes")]
   events_dets_df$`File Start DateTime` <- as.POSIXct(str_extract(events_dets_df$`Begin File`,"\\d{8}.\\d{6}"),format='%Y%m%d_%H%M%S',origin = "1970-01-01",tz="Africa/Brazzaville") # convert the data and time charaters to real date and time with the correct time zone
   events_dets_df$`File Start Date` <- format(as.Date(str_extract(events_dets_df$'Begin File' ,"\\d{8}.\\d{6}"),"%Y%m%d"),"%m/%d/%Y")
   events_dets_df$`Detection DateTime` <- events_dets_df$`File Start DateTime`+ events_dets_df$`File Offset (s)`
@@ -373,7 +416,7 @@ data_summaries_function <- function(
       #names(zero_days_df)
 
       zero_days_df2 <- zero_days_df[,c("Site", "Begin File","File Offset (s)","Count",
-                                       "Deployment Number","Sound Problems", "Notes", "Rand")]
+                                       "Deployment Number", "Notes", "Rand")]
       #zero_days_df2 <- dplyr::rename(zero_days_df2, "Event Count" = "Count")
       zero_days_df2 <- dplyr::rename(zero_days_df2, "File Name" = "Begin File")
       zero_days_df2$'Count' <- 0
@@ -386,9 +429,13 @@ data_summaries_function <- function(
     }
 
   #### Site information ####
-    if(exists("site_lat_long")){
-      site_info_names <- names(site_lat_long)
-    }
+    # if(exists("site_lat_long")){
+    #   site_info_names <- names(site_lat_long)
+    # }
+  site_info_names <- character()
+  if (!is.null(site_lat_long)) {
+    site_info_names <- setdiff(names(site_lat_long), "Site")
+  }
 
   #### FILTER BY ANALYSIS DATES ####
 
@@ -478,8 +525,14 @@ data_summaries_function <- function(
   # merge with bad sound quality times (needs to be determined by noise levels) - should be incorporated in the sound check file instead!
 
   # add strata, lat, and long information from the sites txt file
-    if(exists("site_lat_long")){
-      events_hrly <- full_join(events_hrly1,site_lat_long)
+    # if(exists("site_lat_long")){
+    #   events_hrly <- full_join(events_hrly1,site_lat_long)
+    # } else {
+    #   events_hrly <- events_hrly1
+    # }
+    # Add strata, latitude, and longitude information from the sites file, if supplied
+    if (!is.null(site_lat_long)) {
+      events_hrly <- full_join(events_hrly1, site_lat_long)
     } else {
       events_hrly <- events_hrly1
     }

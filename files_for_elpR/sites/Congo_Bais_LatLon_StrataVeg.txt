@@ -1,0 +1,7 @@
+Site	Latitude	Longitude	Vegetation Class	Strata
+mk01a	2.41337	16.29491	Clairiere	PNNN
+np01a	2.86095	16.68956	Clairiere	PNNN
+np02a	2.819	16.5416	Clairiere	PNNN
+np03a	2.75869	16.5623	Clairiere	PNNN
+np04a	2.65547	16.57444	Clairiere	PNNN
+np05a	2.60992	16.56992	Clairiere	PNNN
