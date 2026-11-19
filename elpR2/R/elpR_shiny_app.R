@@ -39,7 +39,7 @@ elpRApp <- function(){
   library(Hmisc) #for loading monthly plots
   library(leaflet)
   library(dplyr) #summarize()
-  library(webshot) #mapshot()
+  library(webshot) #install_phantomjs()
   if(webshot::is_phantomjs_installed() == FALSE){
     webshot::install_phantomjs()
   } #related to downloading leaflet maps
@@ -2258,15 +2258,24 @@ if (is.null(result)) {
       if (input$map_input == "Year") {
         req(input$year_slider_input)
         year_data <- map_results$event_year_avg
-        color_by_events <- colorNumeric(
-          palette = "viridis",
-          domain = range(year_data$`Avg Events`, na.rm = TRUE)
-        )
-        return(
-          map_results$year_map %>%
+        selected_year_data <- year_data %>%
+          filter(Year == input$year_slider_input)
+        year_data_with_events <- selected_year_data %>%
+          filter(is.finite(`Avg Events`))
+        year_data_without_events <- selected_year_data %>%
+          filter(!is.finite(`Avg Events`))
+        event_values <- year_data$`Avg Events`
+        event_values <- event_values[is.finite(event_values)]
+        year_map <- map_results$year_map
+
+        if (nrow(year_data_with_events) > 0) {
+          color_by_events <- colorNumeric(
+            palette = "viridis",
+            domain = range(event_values)
+          )
+          year_map <- year_map %>%
             addCircleMarkers(
-              data = year_data %>%
-                filter(Year == input$year_slider_input),
+              data = year_data_with_events,
               lng = ~Longitude,
               lat = ~Latitude,
               radius = ~sqrt(`Avg Events`) * 8,
@@ -2275,20 +2284,44 @@ if (is.null(result)) {
               fillOpacity = 0.7,
               group = paste(input$year_slider_input)
             )
-        )
+        }
+        if (nrow(year_data_without_events) > 0) {
+          year_map <- year_map %>%
+            addCircleMarkers(
+              data = year_data_without_events,
+              lng = ~Longitude,
+              lat = ~Latitude,
+              radius = 6,
+              popup = ~paste("Site:", Site, "<br>Avg Events: No data"),
+              color = "#777777",
+              fillColor = "#777777",
+              fillOpacity = 0.7,
+              group = paste(input$year_slider_input)
+            )
+        }
+        return(year_map)
       }
       if (input$map_input == "Month") {
         req(input$month_slider_input)
         month_data <- map_results$event_month_avg
-        color_by_events <- colorNumeric(
-          palette = "viridis",
-          domain = range(month_data$`Avg Events`, na.rm = TRUE)
-        )
-        return(
-          map_results$month_map %>%
+        selected_month_data <- month_data %>%
+          filter(Month == input$month_slider_input)
+        month_data_with_events <- selected_month_data %>%
+          filter(is.finite(`Avg Events`))
+        month_data_without_events <- selected_month_data %>%
+          filter(!is.finite(`Avg Events`))
+        event_values <- month_data$`Avg Events`
+        event_values <- event_values[is.finite(event_values)]
+        month_map <- map_results$month_map
+
+        if (nrow(month_data_with_events) > 0) {
+          color_by_events <- colorNumeric(
+            palette = "viridis",
+            domain = range(event_values)
+          )
+          month_map <- month_map %>%
             addCircleMarkers(
-              data = month_data %>%
-                filter(Month == input$month_slider_input),
+              data = month_data_with_events,
               lng = ~Longitude,
               lat = ~Latitude,
               radius = ~sqrt(`Avg Events`) * 8,
@@ -2297,7 +2330,22 @@ if (is.null(result)) {
               fillOpacity = 0.7,
               group = paste(input$month_slider_input)
             )
-        )
+        }
+        if (nrow(month_data_without_events) > 0) {
+          month_map <- month_map %>%
+            addCircleMarkers(
+              data = month_data_without_events,
+              lng = ~Longitude,
+              lat = ~Latitude,
+              radius = 6,
+              popup = ~paste("Site:", Site, "<br>Avg Events: No data"),
+              color = "#777777",
+              fillColor = "#777777",
+              fillOpacity = 0.7,
+              group = paste(input$month_slider_input)
+            )
+        }
+        return(month_map)
       }
       NULL
     })
@@ -2343,7 +2391,26 @@ if (is.null(result)) {
         paste(map_file_name(), ".png", sep = "")
       },
       content = function(file){
-        mapshot(display_this_map(), file = file, remove_controls = c("layersControl"), vwidth = 700, vheight = 500)
+        tryCatch(
+          mapview::mapshot(
+            display_this_map(),
+            file = file,
+            remove_controls = c("layersControl"),
+            vwidth = 700,
+            vheight = 500
+          ),
+          error = function(error) {
+            error_message <- conditionMessage(error)
+            message("Map download failed: ", error_message)
+            showNotification(
+              paste("Map download failed:", error_message),
+              type = "error",
+              duration = NULL,
+              session = session
+            )
+            stop(error)
+          }
+        )
       }
     )
 
