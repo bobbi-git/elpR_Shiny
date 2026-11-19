@@ -13,8 +13,8 @@
 #'  \item event_year_avg: a table summarizing average daily events per site per year
 #'  \item event_month_avg: a table summarizing average daily events per site per month
 #'  \item default_map: a leaflet map displaying average daily events at each site
-#'  \item strata_map: a leaflet map displaying average daily events at each site, with sites colored by strata (NULL if Strata is not provided)
-#'  \item veg_map: a leaflet map displaying average daily events at each site, with sites colored by vegetation class (NULL if Vegetation Class is not provided)
+#'  \item strata_map: a leaflet map displaying average daily events at each site, with sites colored by strata
+#'  \item veg_map: a leaflet map displaying average daily events at each site, with sites colored by vegetation class
 #'  \item year_map: a leaflet map with sites colored by average daily events; data intended to be displayed in elpRApp()
 #'  \item month_map: a leaflet map with sites colored by average daily events; data intended to be displayed in elpRApp()
 #' }
@@ -31,6 +31,7 @@ maps_function <- function(folder_path, site_lat_long){
   }
 
   #### LOAD TABLES ####
+  #load tables from user inputted folder path
   weekly_files <- list.files(path = folder_path,
                              pattern = "Events_Site_Weekly_Summaries.txt",
                              full.names = TRUE)
@@ -45,9 +46,15 @@ maps_function <- function(folder_path, site_lat_long){
     stop("Expected exactly one Events monthly summary file; found ", length(monthly_files),
          " in ", folder_path)
   }
-  events_weekly <- read_tsv(weekly_files, col_names = TRUE)
-  events_monthly_site <- read_tsv(monthly_files, col_names = TRUE)
-  site_lat_long_map <- read_tsv(site_lat_long, col_names = TRUE)
+  events_weekly <- read_tsv(
+    weekly_files,
+    col_names = TRUE)
+  events_monthly_site <- read_tsv(
+    monthly_files,
+    col_names = TRUE)
+  site_lat_long_map <- read_tsv(
+    site_lat_long,
+    col_names = TRUE)
 
   required_weekly_columns <- c("Site", "Latitude", "Longitude", "sumEvents", "n")
   missing_weekly_columns <- setdiff(required_weekly_columns, names(events_weekly))
@@ -65,125 +72,251 @@ maps_function <- function(folder_path, site_lat_long){
   }
 
   #### CONFIGURE TABLES ####
-  # Summarize values without assuming optional category columns exist in the weekly table.
-  event_site_avg <- events_weekly %>%
-    group_by(Site) %>%
-    summarize(
-      Latitude = round(first(Latitude), 5),
-      Longitude = round(first(Longitude), 5),
-      `Avg Events` = sum(sumEvents) / sum(n),
-      .groups = "drop"
-    )
+  #initialize empty list to hold this function's outputs
+  output_list <- list()
 
-  # Optional category fields are sourced from the site metadata, where they may be present
-  # even when the weekly summary itself has no Strata or Vegetation Class columns.
-  optional_categories <- intersect(c("Strata", "Vegetation Class"), names(site_lat_long_map))
-  if (length(optional_categories) > 0) {
-    site_categories <- site_lat_long_map %>%
-      select(Site, all_of(optional_categories)) %>%
-      distinct(Site, .keep_all = TRUE)
-    event_site_avg <- event_site_avg %>%
-      left_join(site_categories, by = "Site")
+  #make tables summarizing avg daily Events per site
+  if("Vegetation Class" %in% names(events_weekly) &&
+     "Strata" %in% names(events_weekly)){
+    #avg daily Events for "Strata" & "Vegetation Class"
+    output_list <- c(
+      output_list,
+      list(
+        event_site_avg =
+          events_weekly %>%
+          group_by(Site) %>%
+          summarize(
+            "Latitude" = round(first(Latitude),5),
+            "Longitude" = round(first(Longitude),5),
+            "Avg Events" = sum(sumEvents)/sum(n),
+            "Strata" = first(Strata),
+            "Vegetation Class" = first(`Vegetation Class`)
+          )
+      )
+    )
+  } else if("Strata" %in% names(events_weekly)){
+    #avg daily Events for "Strata"
+    output_list <- c(
+      output_list,
+      list(
+        event_site_avg =
+          events_weekly %>%
+          group_by(Site) %>%
+          summarize(
+            "Latitude" = round(first(Latitude),5),
+            "Longitude" = round(first(Longitude),5),
+            "Avg Events" = sum(sumEvents)/sum(n),
+            "Strata" = first(Strata)
+          )
+      )
+    )
+  } else if("Vegetation Class" %in% names(events_weekly)){
+    #avg daily Events for "Vegetation Class"
+    output_list <- c(
+      output_list,
+      list(
+        event_site_avg =
+          events_weekly %>%
+          group_by(Site) %>%
+          summarize(
+            "Latitude" = round(first(Latitude),5),
+            "Longitude" = round(first(Longitude),5),
+            "Avg Events" = sum(sumEvents)/sum(n),
+            "Vegetation Class" = first(`Vegetation Class`)
+          )
+      )
+    )
+  } else{
+    #avg daily Events with NO "Strata" NOR "Vegetation Class"
+    output_list <- c(
+      output_list,
+      list(
+        event_site_avg =
+          events_weekly %>%
+          group_by(Site) %>%
+          summarize(
+            "Latitude" = round(first(Latitude),5),
+            "Longitude" = round(first(Longitude),5),
+            "Avg Events" = sum(sumEvents)/sum(n)
+          )
+      )
+    )
   }
 
-  output_list <- list(
-    event_site_avg = event_site_avg,
-    event_year_avg = events_monthly_site %>%
-      group_by(Site, Year) %>%
-      summarize(`Avg Events` = sum(sumEvents) / sum(n), .groups = "drop") %>%
-      merge(site_lat_long_map, by = "Site"),
-    event_month_avg = events_monthly_site %>%
-      group_by(Site, Month) %>%
-      summarize(`Avg Events` = sum(sumEvents) / sum(n), .groups = "drop") %>%
-      merge(site_lat_long_map, by = "Site")
+  output_list <- c(
+    output_list,
+    list(
+      #avg daily Events for "Year"
+      event_year_avg =
+        events_monthly_site %>%
+        group_by(Site, Year) %>%
+        summarize(
+          "Avg Events" = sum(sumEvents)/sum(n)
+        ) %>%
+        merge(site_lat_long_map, by = "Site"),
+
+      #avg daily Events for "Month"
+      event_month_avg =
+        events_monthly_site %>%
+        group_by(Site, Month) %>%
+        summarize(
+          "Avg Events" = sum(sumEvents)/sum(n)
+        ) %>%
+        merge(site_lat_long_map, by = "Site")
+    )
   )
 
-  #### CREATE MAPS ####
+  #### CREATE MAPS####
+  #retrieve configured tables
+  event_site_avg <- output_list$event_site_avg
   event_year_avg <- output_list$event_year_avg
   event_month_avg <- output_list$event_month_avg
 
+  #BASE MAP - set lat & long
   base_map <- leaflet(event_site_avg) %>%
-    addProviderTiles(provider = providers$Esri.WorldTopoMap, group = "map") %>%
-    setView(lng = mean(event_site_avg$Longitude, na.rm = TRUE),
-            lat = mean(event_site_avg$Latitude, na.rm = TRUE),
+
+    #Add default base map
+    addProviderTiles(provider = providers$Esri.WorldTopoMap,
+                     group = "map") %>%
+
+    #Set center point and zoom level
+    setView(lng = mean(event_site_avg$Longitude),
+            lat = mean(event_site_avg$Latitude),
             zoom = 10)
 
+  #DEFAULT MAP - add circle markers for avg Events
   default_map <- base_map %>%
+
+    #Add markers
     addCircleMarkers(
       lng = ~Longitude,
       lat = ~Latitude,
-      radius = ~sqrt(`Avg Events`) * 10,
+      radius = ~sqrt(`Avg Events`) * 10,  # Adjust the multiplier to change circle sizes
       popup = ~paste("Site:", Site, "<br>Avg Events:", `Avg Events`),
       fillOpacity = 0.7
     )
 
-  # Optional category maps are NULL unless a category column contains usable values.
-  make_category_map <- function(data, category, palette, title) {
-    category_values <- data[[category]]
-    usable <- !is.na(category_values) & nzchar(trimws(as.character(category_values)))
-    if (!any(usable)) {
-      return(NULL)
-    }
+  #STRATA MAP - add circle markers for avg Events & color by strata
+  strata_map <- NULL
+  if("Strata" %in% names(event_site_avg)){
+    color_by_strata <- colorFactor(palette = "viridis",
+                                   domain = unique(event_site_avg$Strata))
+    strata_map <- base_map %>%
 
-    color_by_category <- colorFactor(palette = palette, domain = unique(category_values[usable]))
-    category_map <- base_map %>%
+      #Add legend
       addLegend(
         position = "bottomright",
-        pal = color_by_category,
-        values = category_values[usable],
-        title = title
-      )
+        pal = color_by_strata,
+        values = ~Strata,
+        title = "Strata"
+      ) %>%
 
-    groups <- unique(as.character(category_values[usable]))
-    category_map <- category_map %>%
-      addLayersControl(overlayGroups = groups, position = "topleft")
+      #Add layers control
+      addLayersControl(overlayGroups = unique(event_site_avg$Strata),
+                       position = "topleft")
 
-    for (category_value in groups) {
-      subset_data <- data[usable & as.character(category_values) == category_value, , drop = FALSE]
-      category_map <- category_map %>%
+    #Add markers
+    for(strata in unique(event_site_avg$Strata)){
+      subset_data <- event_site_avg %>%
+        filter(Strata == strata)
+
+      strata_map <- strata_map %>%
         addCircleMarkers(
           data = subset_data,
           lng = ~Longitude,
           lat = ~Latitude,
-          radius = ~sqrt(`Avg Events`) * 10,
+          radius = ~sqrt(`Avg Events`) * 10,  # Adjust the multiplier to change circle sizes
           popup = ~paste("Site:", Site, "<br>Avg Events:", `Avg Events`),
-          color = color_by_category(subset_data[[category]]),
+          color = ~color_by_strata(Strata),
           fillOpacity = 0.7,
-          group = category_value
+          group = paste(strata)
         )
     }
-    category_map
   }
 
-  strata_map <- if ("Strata" %in% names(event_site_avg)) {
-    make_category_map(event_site_avg, "Strata", "viridis", "Strata")
-  } else {
-    NULL
-  }
-  veg_map <- if ("Vegetation Class" %in% names(event_site_avg)) {
-    make_category_map(event_site_avg, "Vegetation Class", "plasma", "Vegetation Class")
-  } else {
-    NULL
+  #VEGETATION CLASS MAP - add circle markers for avg Events & color by veg class
+  veg_map <- NULL
+  if("Vegetation Class" %in% names(event_site_avg)){
+    color_by_veg <- colorFactor(palette = "plasma",
+                                domain = unique(event_site_avg$`Vegetation Class`))
+    veg_map <- base_map %>%
+
+      #Add legend
+      addLegend(
+        position = "bottomright",
+        pal = color_by_veg,
+        values = ~`Vegetation Class`,
+        title = "Vegetation Class"
+      ) %>%
+
+      #Add layers control
+      addLayersControl(overlayGroups = unique(event_site_avg$`Vegetation Class`),
+                       position = "topleft")
+
+    #Add markers
+    for(veg in unique(event_site_avg$`Vegetation Class`)){
+      subset_data <- event_site_avg %>%
+        filter(`Vegetation Class` == veg)
+
+      veg_map <- veg_map %>%
+        addCircleMarkers(
+          data = subset_data,
+          lng = ~Longitude,
+          lat = ~Latitude,
+          radius = ~sqrt(`Avg Events`) * 10,  # Adjust the multiplier to change circle sizes
+          popup = ~paste("Site:", Site, "<br>Avg Events:", `Avg Events`),
+          color = ~color_by_veg(`Vegetation Class`),
+          fillOpacity = 0.7,
+          group = paste(veg)
+        )
+    }
   }
 
-  color_by_events <- colorNumeric(palette = "viridis", domain = range(event_year_avg$`Avg Events`, na.rm = TRUE))
+  #YEAR MAP - add circle markers for avg Events & color by avg Events
+  color_by_Events <- colorNumeric(palette = "viridis",
+                                   domain = range(event_year_avg$`Avg Events`))
   year_map <- leaflet(event_year_avg) %>%
-    addProviderTiles(provider = providers$Esri.WorldTopoMap, group = "map") %>%
-    setView(lng = mean(event_year_avg$Longitude, na.rm = TRUE),
-            lat = mean(event_year_avg$Latitude, na.rm = TRUE),
-            zoom = 10) %>%
-    addLegend(position = "bottomright", pal = color_by_events,
-              values = ~`Avg Events`, title = "Avg Daily Events")
 
-  color_by_events <- colorNumeric(palette = "viridis", domain = range(event_month_avg$`Avg Events`, na.rm = TRUE))
+    #Add default base map
+    addProviderTiles(provider = providers$Esri.WorldTopoMap,
+                     group = "map") %>%
+
+    #Set center point and zoom level
+    setView(lng = mean(event_year_avg$Longitude),
+            lat = mean(event_year_avg$Latitude),
+            zoom = 10) %>%
+
+    #Add legend
+    addLegend(
+      position = "bottomright",
+      pal = color_by_Events,
+      values = ~`Avg Events`,
+      title = "Avg Daily Events"
+    )
+
+  #MONTH MAP - add circle markers for avg Events & color by avg Events
+  color_by_Events <- colorNumeric(palette = "viridis",
+                                   domain = range(event_month_avg$`Avg Events`))
   month_map <- leaflet(event_month_avg) %>%
-    addProviderTiles(provider = providers$Esri.WorldTopoMap, group = "map") %>%
-    setView(lng = mean(event_month_avg$Longitude, na.rm = TRUE),
-            lat = mean(event_month_avg$Latitude, na.rm = TRUE),
-            zoom = 10) %>%
-    addLegend(position = "bottomright", pal = color_by_events,
-              values = ~`Avg Events`, title = "Avg Daily Events")
 
+    #Add default base map
+    addProviderTiles(provider = providers$Esri.WorldTopoMap,
+                     group = "map") %>%
+
+    #Set center point and zoom level
+    setView(lng = mean(event_month_avg$Longitude),
+            lat = mean(event_month_avg$Latitude),
+            zoom = 10) %>%
+
+    #Add legend
+    addLegend(
+      position = "bottomright",
+      pal = color_by_Events,
+      values = ~`Avg Events`,
+      title = "Avg Daily Events"
+    )
+
+  #save maps to output list
   output_list <- c(
     output_list,
     list(
@@ -195,6 +328,8 @@ maps_function <- function(folder_path, site_lat_long){
     )
   )
 
+  #### RETURN ####
   print("Running maps_function complete.")
+  #return configured tables and maps
   return(output_list)
 }
