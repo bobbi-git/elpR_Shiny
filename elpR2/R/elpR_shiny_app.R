@@ -2391,7 +2391,26 @@ if (is.null(result)) {
         paste(map_file_name(), ".png", sep = "")
       },
       content = function(file){
-        mapview::mapshot(display_this_map(), file = file, remove_controls = c("layersControl"), vwidth = 700, vheight = 500)
+        tryCatch(
+          mapview::mapshot(
+            display_this_map(),
+            file = file,
+            remove_controls = c("layersControl"),
+            vwidth = 700,
+            vheight = 500
+          ),
+          error = function(error) {
+            error_message <- conditionMessage(error)
+            message("Map download failed: ", error_message)
+            showNotification(
+              paste("Map download failed:", error_message),
+              type = "error",
+              duration = NULL,
+              session = session
+            )
+            stop(error)
+          }
+        )
       }
     )
 
