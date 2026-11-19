@@ -39,7 +39,7 @@ elpRApp <- function(){
   library(Hmisc) #for loading monthly plots
   library(leaflet)
   library(dplyr) #summarize()
-  library(webshot) #mapshot()
+  library(webshot) #install_phantomjs()
   if(webshot::is_phantomjs_installed() == FALSE){
     webshot::install_phantomjs()
   } #related to downloading leaflet maps
@@ -2391,7 +2391,7 @@ if (is.null(result)) {
         paste(map_file_name(), ".png", sep = "")
       },
       content = function(file){
-        mapshot(display_this_map(), file = file, remove_controls = c("layersControl"), vwidth = 700, vheight = 500)
+        mapview::mapshot(display_this_map(), file = file, remove_controls = c("layersControl"), vwidth = 700, vheight = 500)
       }
     )
 
